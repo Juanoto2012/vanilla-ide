@@ -1,0 +1,2176 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vanilla IDE</title>
+    
+    <!-- ========================================== -->
+    <!-- Etiquetas SEO (Search Engine Optimization) -->
+    <!-- ========================================== -->
+    <meta name="google-site-verification" content="qViQdFLHO0aJ3Eq3P-ehRyipdNiNCTO9vfhUFSocyFU" />
+    <meta name="description" content="Vanilla IDE - Un entorno de desarrollo integrado (IDE) ligero, rápido y directamente en tu navegador. Incluye soporte para IA, ejecución en vivo y terminal virtual.">
+    <meta name="keywords" content="IDE, web IDE, editor de código, programación, desarrollo web, HTML, CSS, JavaScript, IA, autocompletado, terminal virtual, code editor">
+    <meta name="author" content="Vanilla IDE">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#fdfbf7">
+
+    <!-- Open Graph / Facebook / LinkedIn / Discord -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://tu-dominio-vanilla-ide.com/"> <!-- Reemplaza con tu URL real -->
+    <meta property="og:title" content="Vanilla IDE - Programa desde tu navegador">
+    <meta property="og:description" content="Descubre Vanilla IDE: Ligero, rápido y con asistente de IA integrado. Crea, edita y previsualiza tu código en tiempo real.">
+    <meta property="og:image" content="https://file.garden/aKIWFnfXzhwEFeKS/vanilla%20ide/logo.png">
+
+    <!-- Twitter Cards -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://tu-dominio-vanilla-ide.com/"> <!-- Reemplaza con tu URL real -->
+    <meta property="twitter:title" content="Vanilla IDE - Programa desde tu navegador">
+    <meta property="twitter:description" content="Descubre Vanilla IDE: Ligero, rápido y con asistente de IA integrado. Crea, edita y previsualiza tu código en tiempo real.">
+    <meta property="twitter:image" content="https://file.garden/aKIWFnfXzhwEFeKS/vanilla%20ide/logo.png">
+    <!-- ========================================== -->
+
+    <!-- Favicon -->
+    <link rel="icon" href="https://file.garden/aKIWFnfXzhwEFeKS/vanilla%20ide/logo.png">
+    
+    <!-- Tailwind CSS para los estilos de la UI -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        vanilla: {
+                            bg: '#fdfbf7',        // Blanco cálido / Crema (Editor)
+                            sidebar: '#f5f2eb',   // Crema un poco más oscuro (Paneles)
+                            panel: '#f5f2eb',     // Paneles inferiores
+                            border: '#e6dfd3',    // Bordes suaves
+                            text: '#4a433a',      // Texto marrón/gris cálido
+                            accent: '#c68a53',    // Acento caramelo / Vainilla oscura
+                            accentHover: '#b07541',// Hover del acento
+                            hover: '#ebe5da',     // Fondo en hover
+                            active: '#e1d9cc'     // Fondo activo
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Ace Editor y Extensiones -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.3/ace.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.3/ext-modelist.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.3/ext-language_tools.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.3/ext-searchbox.js"></script>
+
+    <!-- Xterm.js para la Terminal -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; background-color: #fdfbf7; color: #4a433a; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        /* Layout principal */
+        #app { display: flex; flex-direction: column; height: 100vh; }
+        #main-area { display: flex; flex: 1; overflow: hidden; }
+        
+        /* Scrollbars estilo Vanilla */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #d3cabc; border-radius: 4px; border: 2px solid transparent; background-clip: padding-box; }
+        ::-webkit-scrollbar-thumb:hover { background: #bcaf9d; border: 2px solid transparent; background-clip: padding-box; }
+        
+        /* Ocultar scrollbar horizontal visualmente pero permitir scroll en las pestañas */
+        .tabs-scroll::-webkit-scrollbar { height: 2px; }
+        .tabs-scroll::-webkit-scrollbar-thumb { background: #e6dfd3; border-radius: 0; border: none; }
+
+        /* Ajustes del árbol de archivos */
+        details > summary { list-style: none; cursor: pointer; }
+        details > summary::-webkit-details-marker { display: none; }
+        .file-item { display: flex; align-items: center; padding: 4px 4px 4px 20px; cursor: pointer; white-space: nowrap; color: #4a433a; }
+        .file-item:hover, .folder-item:hover { background-color: #ebe5da; }
+        .folder-item { display: flex; align-items: center; padding: 4px; cursor: pointer; white-space: nowrap; color: #4a433a; }
+        .selected-file { background-color: #e1d9cc !important; border-left: 2px solid #c68a53; }
+        
+        /* Ajustes de Terminal */
+        .xterm .xterm-viewport { overflow-y: auto !important; }
+        
+        /* Resizer */
+        .resizer-h { width: 4px; cursor: col-resize; background-color: transparent; z-index: 10; transition: background-color 0.2s; flex-shrink: 0; }
+        .resizer-h:hover { background-color: #c68a53; }
+        .resizer-v { height: 4px; cursor: row-resize; background-color: #e6dfd3; z-index: 10; transition: background-color 0.2s; flex-shrink: 0; }
+        .resizer-v:hover { background-color: #c68a53; }
+
+        /* Markdown Styles */
+        .markdown-body pre { background: #fdfbf7; padding: 10px; border-radius: 5px; overflow-x: auto; margin-top: 5px; margin-bottom: 5px; border: 1px solid #e6dfd3; }
+        .markdown-body code { font-family: monospace; color: #b07541; font-size: 0.9em; }
+        .markdown-body pre code { color: #4a433a; font-size: 1em; }
+        .markdown-body p { margin-bottom: 0.5rem; }
+        .markdown-body p:last-child { margin-bottom: 0; }
+        
+        /* Inputs estilizados para BYOK */
+        .byok-input { width: 100%; background: #fdfbf7; color: #4a433a; font-size: 11px; padding: 6px; border: 1px solid #e6dfd3; border-radius: 3px; outline: none; }
+        .byok-input:focus { border-color: #c68a53; }
+
+        /* Ajustes Ace Editor para que se integre al Vanilla Mode */
+        .ace-chrome { background-color: #fdfbf7 !important; color: #4a433a !important; }
+        .ace-chrome .ace_gutter { background: #f5f2eb !important; color: #8b8378 !important; border-right: 1px solid #e6dfd3 !important; }
+
+        /* Debug Console Styles */
+        .log-error { color: #f87171; }
+        .log-warn { color: #fbbf24; }
+        .log-info { color: #60a5fa; }
+
+        /* UI Continue-like Chat Animation */
+        .chat-message-enter { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="text-sm bg-vanilla-bg text-vanilla-text">
+    <div id="app">
+        <!-- Barra superior -->
+        <div class="h-8 bg-vanilla-sidebar flex items-center px-4 justify-between select-none border-b border-vanilla-border">
+            <div class="flex items-center gap-4 text-stone-700 text-xs">
+                <!-- LOGO -->
+                <span class="font-semibold flex items-center gap-2">
+                    <img src="https://file.garden/aKIWFnfXzhwEFeKS/vanilla%20ide/logo.png" alt="Vanilla IDE Logo" class="w-5 h-5 object-contain"> 
+                    Vanilla IDE
+                </span>
+                <span class="hover:bg-vanilla-hover px-2 py-1 rounded cursor-pointer transition-colors" onclick="openFolder()">Abrir Carpeta</span>
+                <span class="hover:bg-vanilla-hover px-2 py-1 rounded cursor-pointer transition-colors" onclick="saveCurrentFile()">Guardar (Ctrl+S)</span>
+            </div>
+            <div class="text-xs text-stone-500 font-medium" id="window-title">Sin carpeta abierta</div>
+            <div class="flex items-center gap-2">
+                <button onclick="runCurrentFile()" class="flex items-center gap-1 bg-[#82a382] hover:bg-[#6c8a6c] text-white px-2 py-1 rounded text-xs transition-colors font-medium shadow-sm">
+                    <i class="ph ph-play"></i> Ejecutar
+                </button>
+            </div>
+        </div>
+
+        <!-- Área Central Principal -->
+        <div id="main-area">
+            
+            <!-- Barra de Actividad IZQUIERDA -->
+            <div class="w-12 flex-shrink-0 bg-vanilla-sidebar flex flex-col items-center py-2 gap-4 border-r border-vanilla-border select-none">
+                <button onclick="switchSidebarView('explorer')" id="btn-explorer" class="text-stone-800 relative p-2" title="Explorador">
+                    <i class="ph ph-files text-2xl"></i>
+                    <div id="indicator-explorer" class="absolute left-0 top-0 bottom-0 w-[2px] bg-vanilla-accent"></div>
+                </button>
+                <button onclick="switchSidebarView('extensions')" id="btn-extensions" class="text-stone-400 relative p-2" title="Extensiones">
+                    <i class="ph ph-puzzle-piece text-2xl"></i>
+                    <div id="indicator-extensions" class="absolute left-0 top-0 bottom-0 w-[2px] bg-vanilla-accent hidden"></div>
+                </button>
+                <div class="flex-1"></div>
+                <button onclick="openSettings()" class="text-stone-400 hover:text-stone-800 p-2 transition-colors" title="Configuración">
+                    <i class="ph ph-gear text-2xl"></i>
+                </button>
+            </div>
+
+            <!-- Panel Lateral IZQUIERDO -->
+            <div id="sidebar-left" class="w-64 flex-shrink-0 bg-vanilla-sidebar flex flex-col border-r border-vanilla-border">
+                
+                <!-- VISTA: Explorador de Archivos -->
+                <div id="view-explorer" class="flex-1 flex flex-col overflow-hidden">
+                    <div class="p-2 text-xs font-semibold tracking-wider text-stone-500 uppercase flex justify-between items-center border-b border-vanilla-border bg-vanilla-sidebar">
+                        <span>Explorador</span>
+                        <!-- Barra de herramientas de archivos -->
+                        <div class="flex gap-1">
+                            <i class="ph ph-file-plus cursor-pointer text-stone-500 hover:text-vanilla-accent text-base p-1 hover:bg-vanilla-hover rounded transition-colors" title="Nuevo Archivo" onclick="uiCreateFile()"></i>
+                            <i class="ph ph-folder-plus cursor-pointer text-stone-500 hover:text-vanilla-accent text-base p-1 hover:bg-vanilla-hover rounded transition-colors" title="Nueva Carpeta" onclick="uiCreateFolder()"></i>
+                            <i class="ph ph-arrows-clockwise cursor-pointer text-stone-500 hover:text-vanilla-accent text-base p-1 hover:bg-vanilla-hover rounded transition-colors" title="Refrescar" onclick="renderTree()"></i>
+                        </div>
+                    </div>
+                    <div class="px-2 py-1 pb-2 mt-2">
+                        <button onclick="openFolder()" class="w-full bg-vanilla-accent hover:bg-vanilla-accentHover text-white py-1 px-2 rounded text-xs transition-colors shadow-sm">
+                            Abrir Carpeta Local
+                        </button>
+                    </div>
+                    <div id="file-tree" class="flex-1 overflow-auto p-1 text-vanilla-text min-h-[150px]">
+                        <div class="text-stone-400 text-xs p-2 text-center mt-4">No hay carpeta abierta.<br>Usa el botón para seleccionar un directorio de tu dispositivo.</div>
+                    </div>
+                </div>
+
+                <!-- VISTA: Extensiones -->
+                <div id="view-extensions" class="flex-1 flex flex-col overflow-hidden hidden">
+                    <div class="p-2 text-xs font-semibold tracking-wider text-stone-500 uppercase flex justify-between items-center border-b border-vanilla-border bg-vanilla-sidebar">
+                        <span>Extensiones</span>
+                        <i class="ph ph-arrows-clockwise cursor-pointer text-stone-500 hover:text-vanilla-accent text-base p-1 hover:bg-vanilla-hover rounded transition-colors" title="Actualizar" onclick="fetchExtensions(true)"></i>
+                    </div>
+                    <div id="extensions-list" class="flex-1 overflow-auto p-2 flex flex-col gap-2 bg-[#f0ebe1]">
+                        <div class="text-stone-400 text-xs text-center mt-4 flex flex-col items-center">
+                            <i class="ph ph-spinner animate-spin text-xl mb-1"></i> Cargando extensiones...
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Resizer Horizontal Izquierdo -->
+            <div class="resizer-h" id="resizer-h-left"></div>
+
+            <!-- Área Central (Editor, Extensiones, Preview y Terminal) -->
+            <div class="flex-1 flex flex-col min-w-0 bg-vanilla-bg" id="center-area">
+                
+                <!-- Pestañas Múltiples de archivos -->
+                <div class="h-9 bg-vanilla-sidebar flex items-center justify-between border-b border-vanilla-border select-none overflow-hidden">
+                    <div id="tabs-container" class="flex h-full overflow-x-auto tabs-scroll flex-nowrap flex-1">
+                        <!-- Las pestañas se renderizan aquí dinámicamente -->
+                    </div>
+                    <!-- Editor Mini Toolbar -->
+                    <div class="hidden gap-2 text-stone-500 px-3 bg-vanilla-sidebar z-10 shadow-[-5px_0_5px_-5px_rgba(0,0,0,0.05)] h-full items-center" id="editor-toolbar">
+                        <i class="ph ph-play cursor-pointer hover:text-[#82a382] transition-colors p-1" title="Ejecutar/Preview (F5)" onclick="runCurrentFile()"></i>
+                        <div class="w-px h-4 bg-vanilla-border mx-1"></div>
+                        <i class="ph ph-magnifying-glass cursor-pointer hover:text-vanilla-accent transition-colors p-1" title="Buscar (Ctrl+F)" onclick="editor.execCommand('find')"></i>
+                        <i class="ph ph-arrow-u-up-left cursor-pointer hover:text-vanilla-accent transition-colors p-1" title="Deshacer (Ctrl+Z)" onclick="editor.undo()"></i>
+                        <i class="ph ph-arrow-u-up-right cursor-pointer hover:text-vanilla-accent transition-colors p-1" title="Rehacer (Ctrl+Y)" onclick="editor.redo()"></i>
+                    </div>
+                </div>
+
+                <!-- Contenedor Editor + Extensión + Preview (Flex Row) -->
+                <div class="flex-1 flex min-h-0 relative">
+                    <!-- Contenedor Ace Editor -->
+                    <div id="editor-container" class="flex-1 relative min-w-0">
+                        <div id="editor" class="absolute inset-0"></div>
+                        <div id="editor-placeholder" class="absolute inset-0 flex flex-col items-center justify-center text-stone-300 select-none bg-vanilla-bg z-10">
+                            <!-- LOGO BACKGROUND -->
+                            <img src="https://file.garden/aKIWFnfXzhwEFeKS/vanilla%20ide/logo.png" alt="Vanilla IDE" class="w-24 h-24 mb-4 opacity-30 grayscale pointer-events-none">
+                            <p class="text-xl font-light text-stone-400">Vanilla IDE</p>
+                            <p class="text-sm mt-2 text-stone-300">Selecciona o crea un archivo para empezar a programar</p>
+                        </div>
+                    </div>
+
+                    <!-- Contenedor Extension Details (VS Code Style) -->
+                    <div id="ext-detail-container" class="hidden flex-1 overflow-auto bg-vanilla-bg z-20">
+                        <!-- Contenido renderizado dinámicamente -->
+                    </div>
+
+                    <!-- Resizer Preview -->
+                    <div class="resizer-h hidden bg-vanilla-border" id="resizer-preview"></div>
+
+                    <!-- Contenedor Preview -->
+                    <div id="preview-container" class="hidden w-1/2 flex-col border-l border-vanilla-border bg-vanilla-bg z-30">
+                        <div class="h-8 bg-vanilla-sidebar flex items-center justify-between px-3 border-b border-vanilla-border select-none">
+                            <span class="text-xs font-semibold text-stone-600 flex items-center gap-1"><i class="ph ph-browser"></i> Live Preview</span>
+                            <div class="flex gap-2">
+                                <i class="ph ph-arrows-clockwise cursor-pointer text-stone-500 hover:text-vanilla-accent transition-colors" onclick="runCurrentFile()" title="Recargar"></i>
+                                <i class="ph ph-x cursor-pointer text-stone-500 hover:text-red-400 transition-colors" onclick="closePreview()" title="Cerrar Panel"></i>
+                            </div>
+                        </div>
+                        <iframe id="preview-frame" class="flex-1 w-full bg-white border-0" sandbox="allow-scripts allow-same-origin allow-modals allow-forms"></iframe>
+                    </div>
+                </div>
+
+                <!-- Resizer Vertical -->
+                <div class="resizer-v" id="resizer-v"></div>
+
+                <!-- Panel Inferior (Terminal / Console) -->
+                <div id="bottom-panel" class="h-48 bg-vanilla-panel flex flex-col border-t border-vanilla-border relative">
+                    <div class="flex items-center px-4 h-8 select-none border-b border-vanilla-border bg-vanilla-sidebar">
+                        <div id="tab-terminal" class="px-3 text-xs uppercase tracking-wider text-vanilla-accent font-medium cursor-pointer border-b-2 border-vanilla-accent h-full flex items-center transition-colors" onclick="switchBottomTab('terminal')">Terminal</div>
+                        <div id="tab-console" class="px-3 text-xs uppercase tracking-wider text-stone-400 hover:text-stone-700 font-medium cursor-pointer border-b-2 border-transparent h-full flex items-center transition-colors" onclick="switchBottomTab('console')">
+                            Debug Console 
+                            <span id="console-error-badge" class="hidden ml-1.5 bg-red-400 text-white rounded-full px-1.5 py-0.5 text-[9px] font-bold">0</span>
+                        </div>
+                        <div class="flex-1"></div>
+                        <div class="flex gap-2 text-stone-400">
+                            <i id="btn-clear-console" class="ph ph-trash cursor-pointer hover:text-stone-700 hidden" title="Limpiar Consola" onclick="clearConsole()"></i>
+                            <i class="ph ph-x cursor-pointer hover:text-stone-700" onclick="toggleBottomPanel()"></i>
+                        </div>
+                    </div>
+                    
+                    <!-- Vistas de los paneles inferiores -->
+                    <div id="terminal-container" class="flex-1 py-2 pl-4 pr-1 min-h-0 overflow-hidden relative"></div>
+                    
+                    <div id="console-container" class="hidden flex-1 py-2 px-4 min-h-0 overflow-auto text-xs font-mono bg-[#2a2622] text-[#e6dfd3] select-text">
+                        <div class="text-stone-400 italic mb-2">// La consola web está conectada. Los logs aparecerán aquí al Ejecutar (F5).</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resizer Horizontal Derecho -->
+            <div class="resizer-h hidden" id="resizer-h-right"></div>
+
+            <!-- Panel Lateral DERECHO (Agente AI - Estilo Continue) -->
+            <div id="sidebar-right" class="w-[340px] flex-shrink-0 bg-vanilla-sidebar flex flex-col border-l border-vanilla-border hidden relative">
+                
+                <!-- Header del Agente -->
+                <div class="h-9 p-2 text-xs font-semibold tracking-wider text-stone-600 flex justify-between items-center border-b border-vanilla-border bg-vanilla-sidebar select-none">
+                    <div class="flex items-center gap-2 cursor-pointer hover:text-stone-800 transition-colors" onclick="toggleAiHistory()">
+                        <span id="current-chat-title">Nueva Conversación</span>
+                        <i class="ph ph-caret-down"></i>
+                    </div>
+                    <div class="flex items-center gap-3 text-stone-500">
+                        <i class="ph ph-plus cursor-pointer hover:text-vanilla-accent text-sm" title="Nueva Conversación" onclick="createNewSession()"></i>
+                        <i class="ph ph-gear cursor-pointer hover:text-stone-800 text-sm" title="Configuración de Modelos" onclick="toggleAiConfig()"></i>
+                        <div class="w-px h-3 bg-vanilla-border"></div>
+                        <i class="ph ph-x cursor-pointer hover:text-red-400 text-sm" title="Cerrar Panel" onclick="toggleRightSidebar()"></i>
+                    </div>
+                </div>
+
+                <!-- Panel Historial de Chats (Oculto por defecto) -->
+                <div id="ai-history-panel" class="hidden absolute top-9 left-0 right-0 bottom-0 bg-vanilla-sidebar z-20 flex-col border-b border-vanilla-border overflow-hidden">
+                    <div class="p-2 border-b border-vanilla-border bg-vanilla-bg text-[11px] text-stone-500 font-semibold uppercase tracking-wider">Historial de Sesiones</div>
+                    <div id="ai-history-list" class="flex-1 overflow-y-auto p-2 flex flex-col gap-1">
+                        <!-- Lista de sesiones -->
+                    </div>
+                </div>
+
+                <!-- Configuración BYOK (Oculto por defecto) -->
+                <div id="ai-config-panel" class="hidden p-3 border-b border-vanilla-border bg-[#ebe5da] flex-col gap-3 shadow-inner text-xs z-10">
+                    <div class="flex justify-between items-center font-semibold text-stone-600 mb-1">
+                        <span>Configuración de IA</span>
+                        <i class="ph ph-x cursor-pointer hover:text-stone-800" onclick="toggleAiConfig()"></i>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-semibold text-stone-500 mb-1 block">Proveedor API</label>
+                        <select id="ai-provider" class="byok-input cursor-pointer" onchange="updateDefaultModels(); saveSettings()">
+                            <option value="groq">Groq Cloud</option>
+                            <option value="openai">OpenAI</option>
+                            <option value="openrouter">OpenRouter</option>
+                        </select>
+                    </div>
+                    <div>
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="text-[10px] font-semibold text-stone-500 block">Modelo</label>
+                            <button onclick="detectModels()" class="text-[10px] text-vanilla-accent hover:text-vanilla-accentHover flex items-center gap-1 transition-colors bg-vanilla-bg px-1 rounded border border-vanilla-border" title="Autodetectar modelos">
+                                <i class="ph ph-arrows-clockwise"></i> Detectar
+                            </button>
+                        </div>
+                        <input type="text" id="ai-model" class="byok-input" value="llama3-8b-8192" list="model-list" placeholder="Ej: llama3-8b-8192" oninput="saveSettings()">
+                        <datalist id="model-list"></datalist>
+                        <div id="model-status" class="hidden mt-1"></div>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-semibold text-stone-500 mb-1 block">API Key</label>
+                        <input type="password" id="ai-apikey" class="byok-input" placeholder="Pega tu API Key aquí..." oninput="saveSettings()">
+                    </div>
+                </div>
+
+                <!-- Chat Area -->
+                <div id="chat-messages" class="flex-1 overflow-auto p-4 text-sm flex flex-col gap-6 markdown-body bg-vanilla-bg pb-6">
+                    <!-- Los mensajes se renderizan aquí -->
+                </div>
+
+                <!-- Área de Input (Estilo Continue) -->
+                <div class="p-3 bg-vanilla-bg border-t border-vanilla-border shadow-[0_-5px_10px_rgba(0,0,0,0.02)] z-10 relative">
+                    <div class="flex flex-col bg-vanilla-bg border border-vanilla-border rounded-lg shadow-sm focus-within:border-vanilla-accent focus-within:ring-1 focus-within:ring-vanilla-accent transition-all overflow-hidden relative">
+                        <!-- Input Textarea -->
+                        <textarea id="ai-input" class="w-full bg-transparent text-stone-700 text-[13px] p-3 outline-none resize-none max-h-48 min-h-[50px]" placeholder="Pregunta algo al agente... (Shift+Enter para nueva línea)"></textarea>
+                        
+                        <!-- Toolbar Inferior del Input -->
+                        <div class="flex justify-between items-center p-2 bg-[#faf9f5] border-t border-vanilla-border">
+                            <div class="flex gap-2 text-stone-400">
+                                <button class="hover:text-stone-700 text-[11px] flex items-center gap-1 bg-vanilla-hover px-1.5 py-0.5 rounded transition-colors" title="El contexto del archivo activo se envía automáticamente">
+                                    <i class="ph ph-file-code"></i> Auto-Context
+                                </button>
+                            </div>
+                            <button onclick="sendAIPrompt()" class="bg-vanilla-accent hover:bg-vanilla-accentHover text-white p-1.5 rounded transition-colors flex justify-center items-center shadow-sm">
+                                <i class="ph ph-paper-plane-right text-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="text-center text-[9px] text-stone-400 mt-2">
+                        El código generado puede ser aplicado directamente al editor.
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Barra de Actividad DERECHA -->
+            <div class="w-12 flex-shrink-0 bg-vanilla-sidebar flex flex-col items-center py-2 gap-4 border-l border-vanilla-border select-none">
+                <button onclick="toggleRightSidebar()" id="btn-ai" class="text-stone-400 hover:text-stone-800 relative p-2" title="Agente AI">
+                    <i class="ph ph-sparkle text-2xl"></i>
+                    <div id="indicator-ai" class="absolute right-0 top-0 bottom-0 w-[2px] bg-vanilla-accent hidden"></div>
+                </button>
+            </div>
+
+        </div>
+
+        <!-- Barra de estado -->
+        <div class="h-6 bg-vanilla-accent text-white text-[11px] flex items-center px-3 justify-between select-none">
+            <div class="flex items-center gap-4">
+                <span class="flex items-center gap-1 hover:bg-vanilla-accentHover px-1 rounded cursor-pointer transition-colors" onclick="toggleBottomPanel()"><i class="ph ph-terminal-window"></i> Paneles</span>
+                <span class="flex items-center gap-1 cursor-pointer hover:bg-vanilla-accentHover px-1 rounded transition-colors" onclick="switchBottomTab('console')">
+                    <i class="ph ph-x-circle"></i> <span id="status-error-count">0</span>
+                    <i class="ph ph-warning ml-1"></i> 0
+                </span>
+            </div>
+            <div class="flex items-center gap-4">
+                <span id="status-cursor">Ln 1, Col 1</span>
+                <span id="status-lang">PlainText</span>
+                <span>UTF-8</span>
+                <span class="flex items-center gap-1 hover:bg-vanilla-accentHover px-1 cursor-pointer transition-colors rounded" onclick="toggleRightSidebar()"><i class="ph ph-sparkle"></i> IA Integrada</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Menú Contextual del Explorador -->
+    <div id="context-menu" class="hidden fixed bg-vanilla-bg shadow-xl border border-vanilla-border py-1 rounded w-48 z-[100] text-xs text-stone-700 select-none">
+        <div class="px-3 py-2 hover:bg-vanilla-hover cursor-pointer flex items-center gap-2 transition-colors" onclick="ctxAction('new-file')"><i class="ph ph-file-plus text-vanilla-accent text-sm"></i> Nuevo Archivo</div>
+        <div class="px-3 py-2 hover:bg-vanilla-hover cursor-pointer flex items-center gap-2 transition-colors" onclick="ctxAction('new-folder')"><i class="ph ph-folder-plus text-vanilla-accent text-sm"></i> Nueva Carpeta</div>
+        <div class="border-t border-vanilla-border my-1"></div>
+        <div class="px-3 py-2 hover:bg-vanilla-hover cursor-pointer flex items-center gap-2 transition-colors" onclick="ctxAction('copy-path')"><i class="ph ph-copy text-stone-400 text-sm"></i> Copiar Ruta</div>
+        <div class="border-t border-vanilla-border my-1"></div>
+        <div class="px-3 py-2 hover:bg-red-50 text-red-500 cursor-pointer flex items-center gap-2 transition-colors" onclick="ctxAction('delete')"><i class="ph ph-trash text-sm"></i> Eliminar</div>
+    </div>
+
+    <!-- Modal de Configuración -->
+    <div id="settings-modal" class="fixed inset-0 bg-stone-900 bg-opacity-40 z-50 flex items-center justify-center hidden">
+        <div class="bg-vanilla-bg w-80 rounded shadow-xl flex flex-col overflow-hidden border border-vanilla-border">
+            <div class="bg-vanilla-sidebar p-3 border-b border-vanilla-border flex justify-between items-center">
+                <h2 class="text-sm font-semibold text-stone-700 flex items-center gap-2"><i class="ph ph-gear"></i> Ajustes del IDE</h2>
+                <i class="ph ph-x cursor-pointer text-stone-400 hover:text-red-400 transition-colors text-base" onclick="closeSettings()"></i>
+            </div>
+            <div class="p-4 flex flex-col gap-4 text-xs">
+                <div>
+                    <label class="font-semibold text-stone-600 block mb-1">Tema del Editor</label>
+                    <select id="setting-theme" class="byok-input cursor-pointer">
+                        <option value="ace/theme/chrome">Vanilla Claro (Chrome)</option>
+                        <option value="ace/theme/monokai">Oscuro (Monokai)</option>
+                        <option value="ace/theme/dracula">Oscuro (Dracula)</option>
+                        <option value="ace/theme/github">Claro (GitHub)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="font-semibold text-stone-600 block mb-1">Tamaño de Fuente del Editor (px)</label>
+                    <input type="number" id="setting-fontsize" class="byok-input w-full" value="14" min="10" max="30">
+                </div>
+                
+                <hr class="border-vanilla-border my-1">
+                
+                <button onclick="clearLocalStorage()" class="w-full bg-[#fdf3f3] hover:bg-[#fae4e4] text-[#d9534f] border border-[#f5c6c6] py-2 rounded text-xs transition-colors font-medium flex justify-center items-center gap-2">
+                    <i class="ph ph-trash text-sm"></i> Borrar Datos Guardados
+                </button>
+            </div>
+            <div class="p-3 border-t border-vanilla-border bg-vanilla-sidebar flex justify-end gap-2">
+                <button onclick="closeSettings()" class="bg-vanilla-bg border border-vanilla-border hover:bg-vanilla-hover text-stone-600 px-3 py-1.5 rounded text-xs transition-colors">Cancelar</button>
+                <button onclick="applySettings()" class="bg-vanilla-accent hover:bg-vanilla-accentHover text-white px-3 py-1.5 rounded text-xs transition-colors font-medium">Aplicar y Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Diálogo Genérico -->
+    <div id="dialog-modal" class="fixed inset-0 bg-stone-900 bg-opacity-40 z-[60] flex items-center justify-center hidden">
+        <div class="bg-vanilla-bg w-80 rounded shadow-xl flex flex-col overflow-hidden border border-vanilla-border">
+            <div class="p-5 flex flex-col gap-3">
+                <h3 id="dialog-title" class="font-bold text-stone-700 text-sm flex items-center gap-2"><i class="ph ph-info text-vanilla-accent"></i> Mensaje</h3>
+                <p id="dialog-message" class="text-xs text-stone-600 leading-relaxed"></p>
+                <input type="text" id="dialog-input" class="byok-input hidden mt-2" placeholder="Escribe aquí...">
+            </div>
+            <div class="p-3 border-t border-vanilla-border bg-vanilla-sidebar flex justify-end gap-2" id="dialog-buttons">
+                <button id="dialog-btn-cancel" class="bg-vanilla-bg border border-vanilla-border hover:bg-vanilla-hover text-stone-600 px-4 py-1.5 rounded text-xs transition-colors hidden">Cancelar</button>
+                <button id="dialog-btn-ok" class="bg-vanilla-accent hover:bg-vanilla-accentHover text-white px-4 py-1.5 rounded text-xs transition-colors font-medium">Aceptar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 0. FUNCIONES DE DIÁLOGO CUSTOM ---
+        function showDialog(title, message, isPrompt = false, callback = null) {
+            const modal = document.getElementById('dialog-modal');
+            document.getElementById('dialog-title').innerHTML = `<i class="ph ph-info text-vanilla-accent"></i> ${title}`;
+            document.getElementById('dialog-message').textContent = message;
+            
+            const input = document.getElementById('dialog-input');
+            const btnCancel = document.getElementById('dialog-btn-cancel');
+            const btnOk = document.getElementById('dialog-btn-ok');
+            
+            if (isPrompt) {
+                input.classList.remove('hidden');
+                input.value = '';
+                btnCancel.classList.remove('hidden');
+                setTimeout(() => input.focus(), 100);
+            } else {
+                input.classList.add('hidden');
+                btnCancel.classList.add('hidden');
+                setTimeout(() => btnOk.focus(), 100);
+            }
+            
+            modal.classList.remove('hidden');
+            
+            const newBtnOk = btnOk.cloneNode(true);
+            const newBtnCancel = btnCancel.cloneNode(true);
+            btnOk.parentNode.replaceChild(newBtnOk, btnOk);
+            btnCancel.parentNode.replaceChild(newBtnCancel, btnCancel);
+
+            newBtnOk.onclick = () => {
+                modal.classList.add('hidden');
+                if (callback) callback(isPrompt ? input.value.trim() : true);
+            };
+            
+            newBtnCancel.onclick = () => {
+                modal.classList.add('hidden');
+                if (callback) callback(null);
+            };
+
+            input.onkeydown = (e) => {
+                if (e.key === 'Enter') newBtnOk.click();
+            };
+        }
+
+        // --- 1. LOCAL STORAGE / AJUSTES ---
+        function loadSettings() {
+            const savedProvider = localStorage.getItem('vanilla_ide_ai_provider');
+            const savedModel = localStorage.getItem('vanilla_ide_ai_model');
+            const savedKey = localStorage.getItem('vanilla_ide_ai_apikey');
+            const savedFontSize = localStorage.getItem('vanilla_ide_fontsize') || '14';
+            const savedTheme = localStorage.getItem('vanilla_ide_theme') || 'ace/theme/chrome';
+            
+            if (savedProvider) document.getElementById('ai-provider').value = savedProvider;
+            if (savedModel) document.getElementById('ai-model').value = savedModel;
+            if (savedKey) document.getElementById('ai-apikey').value = savedKey;
+            
+            editor.setOptions({ fontSize: savedFontSize + "px" });
+            editor.setTheme(savedTheme);
+            document.getElementById('setting-theme').value = savedTheme;
+
+            // Load Chat Sessions
+            loadChatSessions();
+        }
+
+        function saveSettings() {
+            localStorage.setItem('vanilla_ide_ai_provider', document.getElementById('ai-provider').value);
+            localStorage.setItem('vanilla_ide_ai_model', document.getElementById('ai-model').value);
+            localStorage.setItem('vanilla_ide_ai_apikey', document.getElementById('ai-apikey').value);
+        }
+
+        function openSettings() {
+            document.getElementById('settings-modal').classList.remove('hidden');
+            document.getElementById('setting-fontsize').value = localStorage.getItem('vanilla_ide_fontsize') || '14';
+            document.getElementById('setting-theme').value = localStorage.getItem('vanilla_ide_theme') || 'ace/theme/chrome';
+        }
+
+        function closeSettings() {
+            document.getElementById('settings-modal').classList.add('hidden');
+        }
+
+        function applySettings() {
+            const size = document.getElementById('setting-fontsize').value;
+            const theme = document.getElementById('setting-theme').value;
+            
+            localStorage.setItem('vanilla_ide_fontsize', size);
+            localStorage.setItem('vanilla_ide_theme', theme);
+            
+            editor.setOptions({ fontSize: size + "px" });
+            editor.setTheme(theme);
+            closeSettings();
+        }
+
+        function clearLocalStorage() {
+            showDialog("Borrar Datos", "Escribe 'borrar' para eliminar todos los datos y el historial de chats guardados localmente.", true, (val) => {
+                if (val && val.toLowerCase() === 'borrar') {
+                    localStorage.removeItem('vanilla_ide_ai_provider');
+                    localStorage.removeItem('vanilla_ide_ai_model');
+                    localStorage.removeItem('vanilla_ide_ai_apikey');
+                    localStorage.removeItem('vanilla_ide_fontsize');
+                    localStorage.removeItem('vanilla_ide_theme');
+                    localStorage.removeItem('vanilla_ide_extensions');
+                    localStorage.removeItem('vanilla_ide_chats');
+                    document.getElementById('ai-apikey').value = "";
+                    closeSettings(); 
+                    showDialog("Éxito", "Los datos han sido borrados de tu navegador.", false, () => {
+                        location.reload();
+                    });
+                }
+            });
+        }
+
+        // --- 2. CONFIGURACIÓN DEL EDITOR (ACE) ---
+        ace.require("ace/ext/language_tools");
+        ace.require("ace/ext/searchbox");
+        const editor = ace.edit("editor");
+        
+        editor.setOptions({
+            showPrintMargin: false,
+            displayIndentGuides: true,
+            enableBasicAutocompletion: true,
+            enableSnippets: true,
+            enableLiveAutocompletion: true
+        });
+
+        editor.session.selection.on('changeCursor', function() {
+            const pos = editor.selection.getCursor();
+            document.getElementById('status-cursor').textContent = `Ln ${pos.row + 1}, Col ${pos.column + 1}`;
+        });
+
+        // AI Autocompletado
+        let aiCompleterTimeout;
+        const aiCompleter = {
+            getCompletions: function(editor, session, pos, prefix, callback) {
+                const apiKey = document.getElementById('ai-apikey').value.trim();
+                const provider = document.getElementById('ai-provider').value;
+                const model = document.getElementById('ai-model').value.trim();
+                
+                if (!apiKey || prefix.length < 2) return callback(null, []);
+
+                clearTimeout(aiCompleterTimeout);
+                aiCompleterTimeout = setTimeout(async () => {
+                    const textBeforeCursor = session.getValue().substring(0, session.doc.positionToIndex(pos));
+                    let endpoint = '';
+                    if (provider === 'groq') endpoint = 'https://api.groq.com/openai/v1/chat/completions';
+                    else if (provider === 'openai') endpoint = 'https://api.openai.com/v1/chat/completions';
+                    else if (provider === 'openrouter') endpoint = 'https://openrouter.ai/api/v1/chat/completions';
+
+                    try {
+                        const response = await fetch(endpoint, {
+                            method: 'POST',
+                            headers: { 
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${apiKey}`,
+                                ...(provider === 'openrouter' && { 'HTTP-Referer': window.location.href, 'X-Title': 'Vanilla IDE' })
+                            },
+                            body: JSON.stringify({
+                                model: model,
+                                messages: [
+                                    { role: "system", content: "You are an inline code completion assistant. Output ONLY the code that completes the prompt. Do not include markdown formatting, backticks, or explanations." },
+                                    { role: "user", content: "Complete this code:\n" + textBeforeCursor }
+                                ],
+                                max_tokens: 50,
+                                temperature: 0.2
+                            })
+                        });
+                        
+                        const data = await response.json();
+                        if (data.choices && data.choices[0] && data.choices[0].message) {
+                            let suggestion = data.choices[0].message.content;
+                            suggestion = suggestion.replace(/^```[a-z]*\n/i, '').replace(/\n```$/i, '').trim();
+                            if (suggestion) {
+                                callback(null, [{
+                                    caption: suggestion.split('\n')[0].substring(0, 30) + "... (AI)",
+                                    value: suggestion,
+                                    meta: "AI 🤖"
+                                }]);
+                                return;
+                            }
+                        }
+                        callback(null, []);
+                    } catch (e) { callback(null, []); }
+                }, 800); 
+            }
+        };
+        ace.require("ace/ext/language_tools").addCompleter(aiCompleter);
+
+        editor.commands.addCommand({
+            name: 'save',
+            bindKey: {win: "Ctrl-S", "mac": "Cmd-S"},
+            exec: function(editor) { saveCurrentFile(); }
+        });
+
+        editor.commands.addCommand({
+            name: 'run',
+            bindKey: {win: "F5", "mac": "F5"},
+            exec: function(editor) { runCurrentFile(); }
+        });
+
+        const modelist = ace.require("ace/ext/modelist");
+        const EditSession = ace.require("ace/edit_session").EditSession;
+        const UndoManager = ace.require("ace/undomanager").UndoManager;
+
+        // Estado del IDE
+        let currentDirHandle = null;
+        let fileHandlesMap = new Map(); 
+        let entryMap = new Map();
+        let ctxTarget = null;
+        
+        let openFilesMap = new Map(); 
+        let activeFilePath = null;
+        let isSaving = false;
+
+        // --- SISTEMA DE EXTENSIONES ---
+        let availableExtensions = [];
+        let installedExtensions = JSON.parse(localStorage.getItem('vanilla_ide_extensions') || '[]');
+
+        // Auto-sincronización con el catálogo de FileGarden cada 30 segundos
+        setInterval(() => {
+            fetchExtensions(false);
+        }, 30000);
+
+        async function fetchExtensions(forceUI = false) {
+            const listContainer = document.getElementById('extensions-list');
+            if (forceUI) {
+                listContainer.innerHTML = '<div class="text-stone-400 text-xs text-center mt-4 flex flex-col items-center"><i class="ph ph-spinner animate-spin text-xl mb-1"></i> Actualizando...</div>';
+            }
+
+            try {
+                // Importamos dinámicamente el archivo .js en lugar de hacer fetch del .json
+                const moduleUrl = 'https://file.garden/aKIWFnfXzhwEFeKS/vanilla%20ide/extentions.js?t=' + Date.now();
+                const module = await import(moduleUrl);
+                availableExtensions = module.extensionsData.extensions || [];
+                
+                if (forceUI || !document.getElementById('view-extensions').classList.contains('hidden')) {
+                    renderExtensions();
+                }
+
+                availableExtensions.forEach(ext => {
+                    if (installedExtensions.includes(ext.name) && !document.getElementById(`ext-script-${ext.name.replace(/\s+/g, '-')}`)) {
+                        executeExtension(ext);
+                    }
+                });
+            } catch(e) {
+                console.error("Error al cargar extensiones: ", e);
+                if (forceUI || !document.getElementById('view-extensions').classList.contains('hidden')) {
+                    listContainer.innerHTML = `<div class="text-[#d9534f] text-xs text-center mt-4 p-2 bg-[#fdf3f3] border border-[#f5c6c6] rounded">Error cargando extensiones.<br>${e.message}</div>`;
+                }
+            }
+        }
+
+        function renderExtensions() {
+            const listContainer = document.getElementById('extensions-list');
+            listContainer.innerHTML = '';
+
+            if (availableExtensions.length === 0) {
+                listContainer.innerHTML = '<div class="text-stone-400 text-xs text-center mt-4">No se encontraron extensiones.</div>';
+                return;
+            }
+
+            availableExtensions.forEach(ext => {
+                const isInstalled = installedExtensions.includes(ext.name);
+                const card = document.createElement('div');
+                card.className = 'bg-vanilla-bg border border-vanilla-border rounded p-2.5 shadow-sm flex flex-col gap-1.5 transition-shadow hover:shadow-md cursor-pointer group';
+                card.onclick = () => openExtensionDetails(ext.name);
+
+                const descText = ext.description || 'Proporciona integración para flujos de trabajo en Vanilla IDE.';
+                const linkHref = ext.link || '#';
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div class="font-semibold text-xs text-vanilla-accent group-hover:text-vanilla-accentHover transition-colors break-words max-w-[80%] flex items-center gap-1">
+                            <i class="ph ph-puzzle-piece"></i> ${ext.name}
+                        </div>
+                        <span class="text-[9px] bg-vanilla-sidebar text-stone-500 px-1.5 py-0.5 rounded border border-vanilla-border">v${ext.version || '1.0'}</span>
+                    </div>
+                    <div class="text-[10px] text-stone-400 line-clamp-2 leading-tight">${descText}</div>
+                    <div class="mt-1 flex justify-between items-center">
+                        <a href="${linkHref}" target="_blank" onclick="event.stopPropagation()" class="text-[10px] text-vanilla-accent hover:underline flex items-center gap-0.5"><i class="ph ph-link"></i> Info</a>
+                        <button class="ext-btn ${isInstalled ? 'bg-[#fdf3f3] hover:bg-[#fae4e4] text-[#d9534f] border border-[#f5c6c6]' : 'bg-vanilla-accent hover:bg-vanilla-accentHover text-white'} px-2.5 py-1 rounded text-[10px] transition-colors font-medium" data-name="${ext.name}">
+                            ${isInstalled ? 'Desinstalar' : 'Instalar'}
+                        </button>
+                    </div>
+                `;
+
+                card.querySelector('.ext-btn').onclick = (e) => {
+                    e.stopPropagation();
+                    toggleExtension(ext.name);
+                };
+                listContainer.appendChild(card);
+            });
+        }
+
+        function toggleExtension(name) {
+            if (installedExtensions.includes(name)) {
+                installedExtensions = installedExtensions.filter(n => n !== name);
+                showDialog("Desinstalación", `Extensión '${name}' desinstalada. Recarga el IDE (F5) para que los cambios surtan efecto completo y se limpie la memoria.`);
+            } else {
+                installedExtensions.push(name);
+                const ext = availableExtensions.find(e => e.name === name);
+                if (ext) executeExtension(ext);
+            }
+            localStorage.setItem('vanilla_ide_extensions', JSON.stringify(installedExtensions));
+
+            renderExtensions();
+            
+            // Si la página de detalles de la extensión está abierta, la actualizamos
+            if (activeFilePath === `ext://${name}`) {
+                const extData = availableExtensions.find(e => e.name === name);
+                if(extData) renderExtensionDetail(extData);
+            }
+        }
+
+        function executeExtension(ext) {
+            try {
+                const script = document.createElement('script');
+                script.id = `ext-script-${ext.name.replace(/\s+/g, '-')}`;
+                script.textContent = `
+                    try {
+                        ${ext.jscode}
+                    } catch(e) {
+                        console.error("[Extension API] Error en extensión '${ext.name}':", e);
+                    }
+                `;
+                document.body.appendChild(script);
+                console.info(`[IDE Extensions] Extensión '${ext.name}' cargada y activa.`);
+            } catch (e) {
+                console.error(`[IDE] Error inyectando extensión '${ext.name}':`, e);
+            }
+        }
+
+        // --- SISTEMA DE PÁGINAS DE EXTENSIONES (ESTILO VS CODE) ---
+        function openExtensionDetails(extName) {
+            const path = `ext://${extName}`;
+            const ext = availableExtensions.find(e => e.name === extName);
+            if (!ext) return;
+
+            if (openFilesMap.has(path)) {
+                switchToFile(path);
+                return;
+            }
+
+            const fileData = {
+                type: 'extension',
+                isDirty: false,
+                iconClass: 'ph-puzzle-piece text-vanilla-accent',
+                name: `Extensión: ${ext.name}`,
+                ext: ext
+            };
+
+            openFilesMap.set(path, fileData);
+            switchToFile(path);
+        }
+
+        function renderExtensionDetail(ext) {
+            const container = document.getElementById('ext-detail-container');
+            const isInstalled = installedExtensions.includes(ext.name);
+            const descText = ext.description || 'Proporciona integración y herramientas adicionales para mejorar los flujos de trabajo dentro de Vanilla IDE.';
+            const linkHref = ext.link || '#';
+
+            container.innerHTML = `
+                <div class="max-w-4xl mx-auto w-full p-8 flex flex-col gap-6 select-text">
+                    <div class="flex items-start gap-6">
+                        <div class="w-24 h-24 bg-vanilla-sidebar border border-vanilla-border rounded-xl flex items-center justify-center text-vanilla-accent text-5xl flex-shrink-0 shadow-sm">
+                            <i class="ph ph-puzzle-piece"></i>
+                        </div>
+                        <div class="flex flex-col gap-2 flex-1">
+                            <h1 class="text-3xl font-bold text-stone-800 tracking-tight">${ext.name}</h1>
+                            <div class="flex gap-3 text-xs text-stone-500 font-medium items-center">
+                                <span class="bg-vanilla-sidebar px-2 py-1 rounded border border-vanilla-border">Versión ${ext.version || '1.0.0'}</span>
+                                <a href="${linkHref}" target="_blank" class="text-vanilla-accent hover:underline flex items-center gap-1"><i class="ph ph-link"></i> Web / Info</a>
+                                ${isInstalled ? '<span class="text-[#82a382] flex items-center gap-1"><i class="ph ph-check-circle"></i> Instalada</span>' : ''}
+                            </div>
+                            <p class="text-sm text-stone-600 mt-2 leading-relaxed">${descText}</p>
+                            <div class="mt-4 flex gap-3">
+                                ${isInstalled
+                                  ? `<button onclick="toggleExtension('${ext.name}')" class="bg-[#fdf3f3] hover:bg-[#fae4e4] text-[#d9534f] border border-[#f5c6c6] px-5 py-2 rounded text-xs transition-colors font-semibold shadow-sm flex items-center gap-2"><i class="ph ph-trash"></i> Desinstalar</button>`
+                                  : `<button onclick="toggleExtension('${ext.name}')" class="bg-vanilla-accent hover:bg-vanilla-accentHover text-white px-5 py-2 rounded text-xs transition-colors font-semibold shadow-sm flex items-center gap-2"><i class="ph ph-download-simple"></i> Instalar Extensión</button>`
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="border-b border-vanilla-border mt-4 mb-2">
+                        <ul class="flex gap-6 -mb-px text-sm font-medium">
+                            <li class="pb-2 border-b-2 border-vanilla-accent text-stone-800 cursor-pointer">Detalles</li>
+                        </ul>
+                    </div>
+
+                    <div class="prose prose-sm max-w-none text-stone-700">
+                        <p>Esta extensión se ejecuta directamente en el entorno de Vanilla IDE. Una vez instalada, la extensión puede agregar nuevos comandos, autocompletado o integrarse con el panel lateral.</p>
+                        <h3 class="font-bold text-stone-800 mt-4 mb-2 text-base">Notas Importantes:</h3>
+                        <ul class="list-disc pl-5 space-y-1">
+                            <li>Si desinstalas la extensión, se recomienda recargar el entorno (F5) para limpiar completamente la memoria del navegador.</li>
+                            <li>La extensión puede tener acceso a tus archivos locales y herramientas de red si se lo otorgas.</li>
+                        </ul>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- 3. GESTIÓN DEL SISTEMA DE ARCHIVOS Y UI DE EXPLORADOR ---
+        
+        async function openFolder() {
+            try {
+                if (!window.showDirectoryPicker) {
+                    showDialog("Navegador no soportado", "Tu navegador no soporta el acceso directo a carpetas locales. Por favor, usa Chrome o Edge.");
+                    return; 
+                }
+                currentDirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+                document.getElementById('window-title').textContent = currentDirHandle.name + " - Vanilla IDE";
+                virtualPwd = [currentDirHandle]; 
+                
+                openFilesMap.clear();
+                activeFilePath = null;
+                renderTabs();
+                document.getElementById('editor-placeholder').style.display = 'flex';
+                document.getElementById('editor-container').classList.add('flex-1');
+                document.getElementById('editor-container').classList.remove('hidden');
+                document.getElementById('ext-detail-container').classList.remove('flex-1');
+                document.getElementById('ext-detail-container').classList.add('hidden');
+                document.getElementById('editor-toolbar').classList.add('hidden');
+                document.getElementById('editor-toolbar').classList.remove('flex');
+                editor.setSession(new EditSession("", "ace/mode/text"));
+                closePreview();
+
+                await renderTree();
+                term.writeln(`\r\n\x1b[32mDirectorio montado:\x1b[0m ${currentDirHandle.name}`);
+                term.write(getPrompt());
+            } catch (error) {
+                console.error("Carpeta no abierta", error);
+            }
+        }
+
+        async function uiCreateFile(parentHandle = currentDirHandle) {
+            if (!parentHandle) return showDialog("Atención", "Abre una carpeta primero para poder crear archivos.");
+            showDialog("Nuevo Archivo", "Escribe el nombre del nuevo archivo (ej. index.html):", true, async (name) => {
+                if (!name) return;
+                try {
+                    await parentHandle.getFileHandle(name, { create: true });
+                    renderTree();
+                    term.writeln(`\r\n\x1b[32mArchivo creado:\x1b[0m ${name}`);
+                    term.write(getPrompt());
+                } catch (e) {
+                    showDialog("Error", `No se pudo crear el archivo: ${e.message}`);
+                }
+            });
+        }
+
+        async function uiCreateFolder(parentHandle = currentDirHandle) {
+            if (!parentHandle) return showDialog("Atención", "Abre una carpeta primero para poder crear subcarpetas.");
+            showDialog("Nueva Carpeta", "Escribe el nombre de la nueva carpeta:", true, async (name) => {
+                if (!name) return;
+                try {
+                    await parentHandle.getDirectoryHandle(name, { create: true });
+                    renderTree();
+                    term.writeln(`\r\n\x1b[34mCarpeta creada:\x1b[0m ${name}/`);
+                    term.write(getPrompt());
+                } catch (e) {
+                    showDialog("Error", `No se pudo crear la carpeta: ${e.message}`);
+                }
+            });
+        }
+
+        async function renderTree() {
+            const treeContainer = document.getElementById('file-tree');
+            treeContainer.innerHTML = '';
+            fileHandlesMap.clear();
+            entryMap.clear();
+            
+            if (!currentDirHandle) return;
+
+            const ul = document.createElement('ul');
+            ul.className = 'pl-0';
+            await buildTree(currentDirHandle, ul, "");
+            treeContainer.appendChild(ul);
+        }
+
+        async function buildTree(dirHandle, parentElement, pathStr) {
+            const entries = [];
+            for await (const entry of dirHandle.values()) {
+                entries.push(entry);
+            }
+            entries.sort((a, b) => {
+                if (a.kind === b.kind) return a.name.localeCompare(b.name);
+                return a.kind === 'directory' ? -1 : 1;
+            });
+
+            for (const entry of entries) {
+                const currentPath = pathStr + "/" + entry.name;
+                
+                entryMap.set(currentPath, { 
+                    handle: entry, parentHandle: dirHandle, name: entry.name, kind: entry.kind, path: currentPath 
+                });
+                
+                if (entry.kind === 'directory') {
+                    const details = document.createElement('details');
+                    const summary = document.createElement('summary');
+                    summary.className = 'folder-item';
+                    summary.dataset.path = currentPath; 
+                    summary.innerHTML = `<i class="ph ph-caret-right text-stone-400 mr-1 transition-transform"></i><i class="ph ph-folder-notch text-[#82a382] mr-2"></i> ${entry.name}`;
+                    
+                    details.appendChild(summary);
+                    const ul = document.createElement('ul');
+                    ul.className = 'pl-4 border-l border-vanilla-border ml-3 mt-1 hidden';
+                    details.appendChild(ul);
+                    
+                    let loaded = false;
+                    details.addEventListener('toggle', async (e) => {
+                        const caret = summary.querySelector('.ph-caret-right');
+                        if (details.open) {
+                            caret.classList.add('rotate-90');
+                            ul.classList.remove('hidden');
+                            if (!loaded) {
+                                await buildTree(entry, ul, currentPath);
+                                loaded = true;
+                            }
+                        } else {
+                            caret.classList.remove('rotate-90');
+                            ul.classList.add('hidden');
+                        }
+                    });
+                    
+                    parentElement.appendChild(details);
+                } else {
+                    fileHandlesMap.set(currentPath, entry); 
+                    
+                    const div = document.createElement('div');
+                    div.className = 'file-item';
+                    div.dataset.path = currentPath;
+                    
+                    let icon = "ph-file-text text-stone-400";
+                    if(entry.name.endsWith('.js') || entry.name.endsWith('.ts')) { icon = "ph-file-code text-[#c68a53]"; }
+                    else if(entry.name.endsWith('.html')) { icon = "ph-file-html text-[#c47250]"; }
+                    else if(entry.name.endsWith('.css')) { icon = "ph-file-css text-[#6993a6]"; }
+                    else if(entry.name.endsWith('.json')) { icon = "ph-brackets-curly text-[#709c70]"; }
+                    else if(entry.name.endsWith('.md')) { icon = "ph-markdown-logo text-[#6993a6]"; }
+                    else if(entry.name.endsWith('.png') || entry.name.endsWith('.jpg')) { icon = "ph-image text-[#a379a3]"; }
+
+                    if (activeFilePath === currentPath) div.classList.add('selected-file');
+
+                    div.innerHTML = `<i class="ph ${icon} mr-2 text-lg"></i> ${entry.name}`;
+                    div.onclick = () => openFile(entry, currentPath, div, icon);
+                    parentElement.appendChild(div);
+                }
+            }
+        }
+
+        // --- LÓGICA DE MÚLTIPLES ARCHIVOS (PESTAÑAS) ---
+        
+        async function openFile(fileHandle, path, element, iconClass) {
+            try {
+                if (openFilesMap.has(path)) {
+                    switchToFile(path);
+                    return;
+                }
+
+                const file = await fileHandle.getFile();
+                const contents = await file.text();
+                const mode = modelist.getModeForPath(file.name).mode;
+                
+                const session = new EditSession(contents, mode);
+                session.setUndoManager(new UndoManager());
+                
+                const fileData = {
+                    type: 'file',
+                    handle: fileHandle,
+                    session: session,
+                    isDirty: false,
+                    iconClass: iconClass,
+                    name: file.name
+                };
+
+                session.on('change', () => {
+                    if (!isSaving && !fileData.isDirty) {
+                        fileData.isDirty = true;
+                        renderTabs();
+                    }
+                });
+
+                openFilesMap.set(path, fileData);
+                switchToFile(path);
+
+            } catch (error) {
+                term.writeln(`\r\n\x1b[31mError leyendo archivo: ${error.message}\x1b[0m`);
+            }
+        }
+
+        function switchToFile(path) {
+            activeFilePath = path;
+            const fileData = openFilesMap.get(path);
+            if (!fileData) return;
+
+            document.getElementById('editor-placeholder').style.display = 'none';
+            document.getElementById('editor-toolbar').classList.remove('hidden');
+            document.getElementById('editor-toolbar').classList.add('flex');
+
+            if (fileData.type === 'extension') {
+                // Configurar layout para Extensiones
+                document.getElementById('editor-container').classList.add('hidden');
+                document.getElementById('editor-container').classList.remove('flex-1');
+                document.getElementById('ext-detail-container').classList.remove('hidden');
+                document.getElementById('ext-detail-container').classList.add('flex-1');
+                
+                document.getElementById('status-lang').textContent = 'Extension Info';
+                renderExtensionDetail(fileData.ext);
+            } else {
+                // Configurar layout para Archivos
+                document.getElementById('ext-detail-container').classList.add('hidden');
+                document.getElementById('ext-detail-container').classList.remove('flex-1');
+                document.getElementById('editor-container').classList.remove('hidden');
+                document.getElementById('editor-container').classList.add('flex-1');
+
+                editor.setSession(fileData.session);
+                document.getElementById('status-lang').textContent = fileData.session.getMode().$id.split('/').pop();
+                editor.focus();
+            }
+            
+            document.querySelectorAll('.file-item').forEach(el => {
+                if (el.dataset.path === path) el.classList.add('selected-file');
+                else el.classList.remove('selected-file');
+            });
+
+            renderTabs();
+            setTimeout(() => { editor.resize(); }, 10);
+        }
+
+        function renderTabs() {
+            const container = document.getElementById('tabs-container');
+            container.innerHTML = '';
+            
+            openFilesMap.forEach((data, path) => {
+                const isActive = path === activeFilePath;
+                
+                const tab = document.createElement('div');
+                tab.className = `h-full px-3 py-1 flex items-center justify-between gap-2 cursor-pointer border-r border-vanilla-border min-w-[120px] max-w-[200px] group transition-colors ${
+                    isActive 
+                    ? 'bg-vanilla-bg border-t-[3px] border-t-vanilla-accent text-stone-800' 
+                    : 'bg-[#f0ebe1] border-t-[3px] border-t-transparent text-stone-500 hover:bg-vanilla-hover'
+                }`;
+                tab.onclick = () => switchToFile(path);
+                
+                const leftSection = document.createElement('div');
+                leftSection.className = "flex items-center gap-2 overflow-hidden";
+                
+                const icon = document.createElement('i');
+                icon.className = `ph ${data.iconClass} ${isActive ? '' : 'opacity-70'}`;
+                
+                const name = document.createElement('span');
+                name.className = "font-medium text-[11px] truncate select-none";
+                name.textContent = data.name;
+                
+                leftSection.appendChild(icon);
+                leftSection.appendChild(name);
+                
+                const rightSection = document.createElement('div');
+                rightSection.className = "flex items-center w-4 justify-center flex-shrink-0";
+                
+                const dirtyDot = document.createElement('div');
+                dirtyDot.className = `w-2 h-2 rounded-full bg-stone-400 ${data.isDirty ? '' : 'hidden'} group-hover:hidden`;
+                
+                const closeBtn = document.createElement('i');
+                closeBtn.className = `ph ph-x text-stone-400 hover:text-stone-700 rounded hover:bg-[#e6dfd3] p-[2px] transition-colors ${data.isDirty ? 'hidden group-hover:block' : ''}`;
+                closeBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    closeFile(path);
+                };
+
+                rightSection.appendChild(dirtyDot);
+                rightSection.appendChild(closeBtn);
+                
+                tab.appendChild(leftSection);
+                tab.appendChild(rightSection);
+                
+                container.appendChild(tab);
+            });
+            
+            const activeElement = container.querySelector('.border-t-vanilla-accent');
+            if (activeElement) {
+                activeElement.scrollIntoView({ behavior: 'smooth', inline: 'nearest' });
+            }
+        }
+
+        function closeFile(path) {
+            const fileData = openFilesMap.get(path);
+            if (!fileData) return;
+
+            if (fileData.isDirty) {
+                showDialog("Archivo sin guardar", `¿Guardar cambios en ${fileData.name} antes de cerrar?`, false, async (confirm) => {
+                    if (confirm) {
+                        await saveSpecificFile(path);
+                    }
+                    executeClose(path);
+                });
+            } else {
+                executeClose(path);
+            }
+        }
+
+        function executeClose(path) {
+            openFilesMap.delete(path);
+            
+            if (activeFilePath === path) {
+                const remainingPaths = Array.from(openFilesMap.keys());
+                if (remainingPaths.length > 0) {
+                    switchToFile(remainingPaths[remainingPaths.length - 1]);
+                } else {
+                    activeFilePath = null;
+                    document.getElementById('editor-placeholder').style.display = 'flex';
+                    document.getElementById('editor-toolbar').classList.add('hidden');
+                    document.getElementById('editor-toolbar').classList.remove('flex');
+                    document.getElementById('ext-detail-container').classList.add('hidden');
+                    document.getElementById('ext-detail-container').classList.remove('flex-1');
+                    document.getElementById('editor-container').classList.remove('hidden');
+                    document.getElementById('editor-container').classList.add('flex-1');
+                    editor.setSession(new EditSession("", "ace/mode/text"));
+                    document.getElementById('status-lang').textContent = 'PlainText';
+                    document.querySelectorAll('.file-item').forEach(el => el.classList.remove('selected-file'));
+                    renderTabs();
+                    closePreview();
+                }
+            } else {
+                renderTabs();
+            }
+        }
+
+        async function saveCurrentFile() {
+            if (!activeFilePath) return;
+            await saveSpecificFile(activeFilePath);
+            
+            const activeTab = document.querySelector('#tabs-container > div.border-t-vanilla-accent');
+            if (activeTab && openFilesMap.get(activeFilePath)?.type !== 'extension') {
+                activeTab.style.borderTopColor = '#82a382';
+                setTimeout(() => { activeTab.style.borderTopColor = ''; }, 600);
+            }
+        }
+
+        async function saveSpecificFile(path) {
+            const data = openFilesMap.get(path);
+            if (!data || data.type === 'extension') return;
+            
+            isSaving = true; 
+            try {
+                const writable = await data.handle.createWritable();
+                await writable.write(data.session.getValue());
+                await writable.close();
+                
+                data.isDirty = false;
+                renderTabs();
+            } catch (error) {
+                showDialog("Error", "No se pudo guardar el archivo. Permisos de escritura denegados.");
+            } finally {
+                isSaving = false;
+            }
+        }
+
+        // --- LÓGICA DEL MENÚ CONTEXTUAL ---
+        document.addEventListener('contextmenu', (e) => {
+            const fileTree = document.getElementById('file-tree');
+            if (fileTree.contains(e.target)) {
+                e.preventDefault();
+                const fileItem = e.target.closest('.file-item');
+                const folderItem = e.target.closest('.folder-item');
+                const targetElement = fileItem || folderItem;
+
+                if (targetElement && targetElement.dataset.path) {
+                    ctxTarget = entryMap.get(targetElement.dataset.path);
+                } else {
+                    ctxTarget = null;
+                }
+                showContextMenu(e.clientX, e.clientY);
+            } else {
+                hideContextMenu();
+            }
+        });
+
+        document.addEventListener('click', hideContextMenu);
+
+        function showContextMenu(x, y) {
+            const menu = document.getElementById('context-menu');
+            menu.classList.remove('hidden');
+            
+            let posX = x;
+            let posY = y;
+            const menuWidth = 192; 
+            const menuHeight = 160; 
+            
+            if (posX + menuWidth > window.innerWidth) posX = window.innerWidth - menuWidth;
+            if (posY + menuHeight > window.innerHeight) posY = window.innerHeight - menuHeight;
+            
+            menu.style.left = `${posX}px`;
+            menu.style.top = `${posY}px`;
+        }
+
+        function hideContextMenu() {
+            document.getElementById('context-menu').classList.add('hidden');
+        }
+
+        async function ctxAction(action) {
+            hideContextMenu();
+            
+            let targetDir = currentDirHandle;
+            if (ctxTarget) {
+                targetDir = ctxTarget.kind === 'directory' ? ctxTarget.handle : ctxTarget.parentHandle;
+            }
+
+            if (action === 'new-file') uiCreateFile(targetDir);
+            else if (action === 'new-folder') uiCreateFolder(targetDir);
+            else if (action === 'copy-path' && ctxTarget) {
+                try {
+                    await navigator.clipboard.writeText(ctxTarget.path);
+                } catch(err) {
+                    const textarea = document.createElement('textarea');
+                    textarea.value = ctxTarget.path;
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textarea);
+                }
+                term.writeln(`\r\n\x1b[32mRuta copiada al portapapeles:\x1b[0m ${ctxTarget.path}`);
+                term.write(getPrompt());
+            } 
+            else if (action === 'delete' && ctxTarget) {
+                showDialog("Confirmar Eliminación", `¿Estás seguro de que deseas eliminar permanentemente '${ctxTarget.name}'?`, false, async (confirm) => {
+                    if (confirm) {
+                        try {
+                            await ctxTarget.parentHandle.removeEntry(ctxTarget.name, { recursive: true });
+                            renderTree();
+                            term.writeln(`\r\n\x1b[31mEliminado:\x1b[0m ${ctxTarget.name}`);
+                            term.write(getPrompt());
+                            
+                            if (openFilesMap.has(ctxTarget.path)) {
+                                executeClose(ctxTarget.path);
+                            }
+                        } catch (e) {
+                            showDialog("Error", `No se pudo eliminar: ${e.message}`);
+                        }
+                    }
+                });
+            }
+        }
+
+        // --- 4. DEBUG TOOLS: EJECUCIÓN Y VISTA PREVIA ---
+
+        let errorCount = 0;
+
+        function runCurrentFile() {
+            if (!activeFilePath || openFilesMap.get(activeFilePath)?.type === 'extension') {
+                showDialog("Aviso", "Abre un archivo HTML o JavaScript para ejecutarlo.");
+                return;
+            }
+
+            const data = openFilesMap.get(activeFilePath);
+            if (!data) return;
+
+            const content = data.session.getValue();
+            const mode = data.session.getMode().$id;
+
+            let htmlContent = "";
+
+            // Interceptor de Consola
+            const interceptor = `
+                <script>
+                    (function(){
+                        const originalLog = console.log;
+                        const originalWarn = console.warn;
+                        const originalError = console.error;
+                        const originalInfo = console.info;
+
+                        function sendMsg(type, args) {
+                            const parsedArgs = Array.from(args).map(a => {
+                                if (a === null) return 'null';
+                                if (a === undefined) return 'undefined';
+                                if (typeof a === 'object') {
+                                    try { return JSON.stringify(a, null, 2); } 
+                                    catch(e) { return '[Object]'; }
+                                }
+                                return String(a);
+                            });
+                            window.parent.postMessage({ source: 'ide-preview', type: type, args: parsedArgs }, '*');
+                        }
+
+                        console.log = function() { sendMsg('log', arguments); originalLog.apply(console, arguments); };
+                        console.warn = function() { sendMsg('warn', arguments); originalWarn.apply(console, arguments); };
+                        console.error = function() { sendMsg('error', arguments); originalError.apply(console, arguments); };
+                        console.info = function() { sendMsg('info', arguments); originalInfo.apply(console, arguments); };
+                        
+                        window.onerror = function(msg, url, lineNo, columnNo, error) {
+                            sendMsg('error', [msg + ' (Línea ' + lineNo + ':' + columnNo + ')']);
+                            return false;
+                        };
+                    })();
+                <\/script>
+            `;
+
+            if (mode.includes("html")) {
+                if(content.includes('<head>')) {
+                    htmlContent = content.replace('<head>', '<head>' + interceptor);
+                } else {
+                    htmlContent = interceptor + content;
+                }
+            } else if (mode.includes("javascript")) {
+                htmlContent = `<!DOCTYPE html><html><head>${interceptor}</head><body style="background:#fdfbf7; font-family:sans-serif; padding:20px; color:#4a433a;"><h3>Ejecutando JS: ${data.name}</h3><p>Abre la <b>Debug Console</b> abajo para ver los resultados.</p><script>${content}<\/script></body></html>`;
+            } else if (mode.includes("css")) {
+                htmlContent = `<!DOCTYPE html><html><head>${interceptor}<style>${content}</style></head><body style="padding:20px; background:#fdfbf7; color:#4a433a;"><h1>Previsualización CSS</h1><p>Esta es una página de prueba para evaluar los estilos.</p><button style="margin-top:10px;">Botón de Prueba</button></body></html>`;
+            } else {
+                showDialog("Aviso", "Solo se puede previsualizar archivos HTML, JavaScript y CSS.");
+                return;
+            }
+
+            // Mostrar el contenedor de Preview
+            document.getElementById('preview-container').classList.remove('hidden');
+            document.getElementById('preview-container').classList.add('flex');
+            document.getElementById('resizer-preview').classList.remove('hidden');
+            
+            const iframe = document.getElementById('preview-frame');
+            iframe.srcdoc = htmlContent;
+
+            // Limpiar la consola, abrir el panel y cambiar a la pestaña de consola
+            clearConsole();
+            
+            const panel = document.getElementById('bottom-panel');
+            if (panel.style.display === 'none' || panel.style.display === '') {
+                toggleBottomPanel();
+            }
+            switchBottomTab('console');
+            
+            setTimeout(() => { editor.resize(); }, 10);
+        }
+
+        function closePreview() {
+            document.getElementById('preview-container').classList.add('hidden');
+            document.getElementById('preview-container').classList.remove('flex');
+            document.getElementById('resizer-preview').classList.add('hidden');
+            setTimeout(() => { editor.resize(); }, 10);
+        }
+
+        function clearConsole() {
+            const cc = document.getElementById('console-container');
+            cc.innerHTML = '<div class="text-stone-500 italic mb-2">// La consola web ha sido limpiada.</div>';
+            errorCount = 0;
+            updateErrorBadge();
+        }
+
+        function updateErrorBadge() {
+            const badge = document.getElementById('console-error-badge');
+            const statusCount = document.getElementById('status-error-count');
+            
+            if (errorCount > 0) {
+                badge.textContent = errorCount;
+                badge.classList.remove('hidden');
+                statusCount.textContent = errorCount;
+                statusCount.parentElement.classList.add('text-red-300', 'font-bold');
+            } else {
+                badge.classList.add('hidden');
+                statusCount.textContent = '0';
+                statusCount.parentElement.classList.remove('text-red-300', 'font-bold');
+            }
+        }
+
+        // Receptor de mensajes del iframe
+        window.addEventListener('message', function(e) {
+            if (e.data && e.data.source === 'ide-preview') {
+                const consoleContainer = document.getElementById('console-container');
+                const div = document.createElement('div');
+                div.className = 'py-1 border-b border-[#3b3530] mb-1';
+                
+                let icon = '';
+                let textColor = 'text-[#e6dfd3]';
+                
+                if (e.data.type === 'error') {
+                    textColor = 'log-error font-semibold';
+                    icon = '<i class="ph ph-x-circle text-red-400 mr-2"></i>';
+                    errorCount++;
+                    updateErrorBadge();
+                } else if (e.data.type === 'warn') {
+                    textColor = 'log-warn';
+                    icon = '<i class="ph ph-warning text-yellow-400 mr-2"></i>';
+                } else if (e.data.type === 'info') {
+                    textColor = 'log-info';
+                    icon = '<i class="ph ph-info text-blue-400 mr-2"></i>';
+                } else {
+                    icon = '<i class="ph ph-caret-right text-stone-500 mr-2"></i>';
+                }
+
+                // Parsear argumentos (soportando múltiples y multilineas)
+                const text = e.data.args.join(' ').replace(/\n/g, '<br>');
+                div.innerHTML = `<div class="flex items-start">${icon}<span class="${textColor} flex-1 whitespace-pre-wrap">${text}</span></div>`;
+                
+                consoleContainer.appendChild(div);
+                consoleContainer.scrollTop = consoleContainer.scrollHeight;
+            }
+        });
+
+
+        // --- 5. UI Y RESIZING ---
+        
+        function switchSidebarView(viewName) {
+            const sidebar = document.getElementById('sidebar-left');
+            const resizer = document.getElementById('resizer-h-left');
+            
+            const viewExplorer = document.getElementById('view-explorer');
+            const viewExt = document.getElementById('view-extensions');
+            
+            const btnExplorer = document.getElementById('btn-explorer');
+            const btnExt = document.getElementById('btn-extensions');
+            
+            const indExplorer = document.getElementById('indicator-explorer');
+            const indExt = document.getElementById('indicator-extensions');
+
+            const isCurrentlyActive = !sidebar.classList.contains('hidden') && 
+                ((viewName === 'explorer' && !viewExplorer.classList.contains('hidden')) || 
+                 (viewName === 'extensions' && !viewExt.classList.contains('hidden')));
+
+            if (isCurrentlyActive) {
+                // Cerrar Sidebar por completo si se pulsa el mismo botón activo
+                sidebar.classList.add('hidden');
+                resizer.classList.add('hidden');
+                btnExplorer.classList.replace('text-stone-800', 'text-stone-400');
+                btnExt.classList.replace('text-stone-800', 'text-stone-400');
+                indExplorer.classList.add('hidden');
+                indExt.classList.add('hidden');
+            } else {
+                // Abrir Sidebar o Cambiar Vista
+                sidebar.classList.remove('hidden');
+                resizer.classList.remove('hidden');
+
+                if (viewName === 'explorer') {
+                    viewExplorer.classList.remove('hidden');
+                    viewExt.classList.add('hidden');
+                    
+                    btnExplorer.classList.replace('text-stone-400', 'text-stone-800');
+                    btnExt.classList.replace('text-stone-800', 'text-stone-400');
+                    
+                    indExplorer.classList.remove('hidden');
+                    indExt.classList.add('hidden');
+                } else if (viewName === 'extensions') {
+                    viewExplorer.classList.add('hidden');
+                    viewExt.classList.remove('hidden');
+                    
+                    btnExplorer.classList.replace('text-stone-800', 'text-stone-400');
+                    btnExt.classList.replace('text-stone-400', 'text-stone-800');
+                    
+                    indExplorer.classList.add('hidden');
+                    indExt.classList.remove('hidden');
+
+                    if (availableExtensions.length === 0) {
+                        fetchExtensions(true);
+                    } else {
+                        renderExtensions();
+                    }
+                }
+            }
+            setTimeout(() => { editor.resize(); fitAddon.fit(); }, 10);
+        }
+
+        function toggleRightSidebar() {
+            const sidebar = document.getElementById('sidebar-right');
+            const resizer = document.getElementById('resizer-h-right');
+            const btn = document.getElementById('btn-ai');
+            const ind = document.getElementById('indicator-ai');
+            
+            if (sidebar.classList.contains('hidden')) {
+                sidebar.classList.remove('hidden');
+                resizer.classList.remove('hidden');
+                btn.classList.replace('text-stone-400', 'text-stone-800');
+                ind.classList.remove('hidden');
+            } else {
+                sidebar.classList.add('hidden');
+                resizer.classList.add('hidden');
+                btn.classList.replace('text-stone-800', 'text-stone-400');
+                ind.classList.add('hidden');
+            }
+            setTimeout(() => { editor.resize(); fitAddon.fit(); scrollChatToBottom(); }, 10);
+        }
+
+        function toggleBottomPanel() {
+            const panel = document.getElementById('bottom-panel');
+            if (panel.style.display === 'none' || panel.style.display === '') {
+                panel.style.display = 'flex';
+                setTimeout(() => { fitAddon.fit(); editor.resize(); }, 10);
+            } else {
+                panel.style.display = 'none';
+                editor.resize();
+            }
+        }
+
+        function switchBottomTab(tab) {
+            const terminalContainer = document.getElementById('terminal-container');
+            const consoleContainer = document.getElementById('console-container');
+            const tabTerminal = document.getElementById('tab-terminal');
+            const tabConsole = document.getElementById('tab-console');
+            const btnClear = document.getElementById('btn-clear-console');
+
+            if (tab === 'terminal') {
+                terminalContainer.classList.remove('hidden');
+                consoleContainer.classList.add('hidden');
+                
+                tabTerminal.classList.replace('text-stone-400', 'text-vanilla-accent');
+                tabTerminal.classList.replace('border-transparent', 'border-vanilla-accent');
+                
+                tabConsole.classList.replace('text-vanilla-accent', 'text-stone-400');
+                tabConsole.classList.replace('border-vanilla-accent', 'border-transparent');
+                
+                btnClear.classList.add('hidden');
+                setTimeout(() => { fitAddon.fit(); }, 10);
+            } else {
+                terminalContainer.classList.add('hidden');
+                consoleContainer.classList.remove('hidden');
+                
+                tabConsole.classList.replace('text-stone-400', 'text-vanilla-accent');
+                tabConsole.classList.replace('border-transparent', 'border-vanilla-accent');
+                
+                tabTerminal.classList.replace('text-vanilla-accent', 'text-stone-400');
+                tabTerminal.classList.replace('border-vanilla-accent', 'border-transparent');
+                
+                btnClear.classList.remove('hidden');
+            }
+        }
+
+        let isResizingHLeft = false;
+        let isResizingHRight = false;
+        let isResizingV = false;
+        let isResizingPreview = false;
+        
+        const sidebarLeft = document.getElementById('sidebar-left');
+        const sidebarRight = document.getElementById('sidebar-right');
+        const bottomPanel = document.getElementById('bottom-panel');
+        const previewContainer = document.getElementById('preview-container');
+
+        document.getElementById('resizer-h-left').addEventListener('mousedown', () => isResizingHLeft = true);
+        document.getElementById('resizer-h-right').addEventListener('mousedown', () => isResizingHRight = true);
+        document.getElementById('resizer-v').addEventListener('mousedown', () => isResizingV = true);
+        document.getElementById('resizer-preview').addEventListener('mousedown', () => isResizingPreview = true);
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizingHLeft && !isResizingHRight && !isResizingV && !isResizingPreview) return;
+            
+            if (isResizingHLeft) {
+                const newWidth = e.clientX - 48;
+                if (newWidth > 150 && newWidth < 600) sidebarLeft.style.width = `${newWidth}px`;
+            }
+            if (isResizingHRight) {
+                const appWidth = document.body.clientWidth;
+                const newWidth = appWidth - e.clientX - 48;
+                if (newWidth > 250 && newWidth < 800) sidebarRight.style.width = `${newWidth}px`;
+            }
+            if (isResizingPreview) {
+                const containerRect = document.getElementById('center-area').getBoundingClientRect();
+                const newWidth = containerRect.right - e.clientX;
+                if (newWidth > 200 && newWidth < containerRect.width - 200) {
+                    previewContainer.style.width = `${newWidth}px`;
+                }
+            }
+            if (isResizingV) {
+                const containerHeight = document.getElementById('center-area').clientHeight;
+                const bounds = document.getElementById('center-area').getBoundingClientRect();
+                const newHeight = bounds.bottom - e.clientY;
+                if (newHeight > 50 && newHeight < containerHeight * 0.8) {
+                    bottomPanel.style.height = `${newHeight}px`;
+                    fitAddon.fit();
+                }
+            }
+            editor.resize();
+        });
+
+        document.addEventListener('mouseup', () => { 
+            isResizingHLeft = false; 
+            isResizingHRight = false; 
+            isResizingV = false; 
+            isResizingPreview = false;
+        });
+
+        window.addEventListener('resize', () => {
+            editor.resize();
+            fitAddon.fit();
+        });
+
+        // Auto-resize textarea for AI Agent
+        const aiInput = document.getElementById('ai-input');
+        aiInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+
+        // --- 6. TERMINAL Y SHELL VIRTUAL ---
+        const term = new Terminal({
+            theme: { background: '#fdfbf7', foreground: '#4a433a', cursor: '#c68a53', selection: '#e1d9cc' },
+            fontFamily: 'Consolas, "Courier New", monospace',
+            fontSize: 13,
+            cursorBlink: true,
+            scrollback: 10000
+        });
+        const fitAddon = new FitAddon.FitAddon();
+        term.loadAddon(fitAddon);
+        term.open(document.getElementById('terminal-container'));
+        fitAddon.fit();
+
+        term.writeln('\x1b[38;5;137mVanilla Bash Virtual (Emulador Integrado)\x1b[0m');
+        term.writeln('Navega tus carpetas reales. Comandos: ls, cd, mkdir, touch, rm, cat, echo, clear, help');
+        
+        let currentLine = '';
+        let virtualPwd = [];
+
+        function getPrompt() {
+            let pathStr = "~";
+            if (virtualPwd.length > 0) pathStr = virtualPwd.map(d => d.name).join('/');
+            return `\r\n\x1b[38;5;65muser@vanilla\x1b[0m:\x1b[38;5;137m${pathStr}\x1b[0m$ `;
+        }
+
+        term.write(getPrompt());
+
+        term.onData(e => {
+            switch (e) {
+                case '\r':
+                    term.writeln('');
+                    executeCommand(currentLine.trim());
+                    currentLine = '';
+                    break;
+                case '\u007F':
+                    if (currentLine.length > 0) {
+                        currentLine = currentLine.substring(0, currentLine.length - 1);
+                        term.write('\b \b');
+                    }
+                    break;
+                default:
+                    if (e >= String.fromCharCode(0x20) && e <= String.fromCharCode(0x7E) || e >= '\u00a0') {
+                        currentLine += e;
+                        term.write(e);
+                    }
+            }
+        });
+
+        async function executeCommand(cmdStr) {
+            if (!cmdStr) { term.write(getPrompt()); return; }
+            const args = cmdStr.match(/(?:[^\s"']+|['"][^'"]*["'])+/g) || [];
+            const cmd = args[0].toLowerCase();
+            
+            try {
+                if (cmd === 'clear') term.clear();
+                else if (cmd === 'help') {
+                    term.writeln('  ls           - Lista archivos/carpetas');
+                    term.writeln('  cd <dir>     - Cambiar de directorio (usa .. para subir)');
+                    term.writeln('  mkdir <dir>  - Crear nueva carpeta');
+                    term.writeln('  touch <file> - Crear nuevo archivo vacío');
+                    term.writeln('  rm <file>    - Eliminar archivo o carpeta');
+                    term.writeln('  cat <file>   - Muestra el contenido de un archivo');
+                    term.writeln('  eval <code>  - Ejecuta código JS');
+                }
+                else if (cmd === 'echo') term.writeln(args.slice(1).join(' ').replace(/['"]/g, ''));
+                else if (cmd === 'eval') {
+                    try { term.writeln(String(eval(args.slice(1).join(' ')))); } 
+                    catch (err) { term.writeln(`\x1b[31mError:\x1b[0m ${err.message}`); }
+                }
+                else if (['ls', 'cd', 'mkdir', 'touch', 'rm', 'cat'].includes(cmd) && virtualPwd.length === 0) {
+                    term.writeln('\x1b[33mNo hay directorio montado. Abre una carpeta en la UI.\x1b[0m');
+                }
+                else if (cmd === 'ls') {
+                    const items = [];
+                    for await (const entry of virtualPwd[virtualPwd.length - 1].values()) items.push(entry);
+                    let output = '';
+                    items.sort((a,b) => a.kind === b.kind ? a.name.localeCompare(b.name) : (a.kind==='directory'?-1:1)).forEach(i => {
+                        output += i.kind === 'directory' ? `\x1b[38;5;137;1m${i.name}/\x1b[0m  ` : `${i.name}  `;
+                    });
+                    if(output) term.writeln(output);
+                }
+                else if (cmd === 'cd') {
+                    const target = args[1];
+                    if (!target || target === '~' || target === '/') virtualPwd = virtualPwd.length > 0 ? [virtualPwd[0]] : [];
+                    else if (target === '..') { if (virtualPwd.length > 1) virtualPwd.pop(); }
+                    else {
+                        try {
+                            const newDir = await virtualPwd[virtualPwd.length - 1].getDirectoryHandle(target.replace(/['"]/g, ''));
+                            virtualPwd.push(newDir);
+                        } catch (e) { term.writeln(`\x1b[31mcd: ${target}: No existe el directorio\x1b[0m`); }
+                    }
+                }
+                else if (cmd === 'mkdir') {
+                    try { await virtualPwd[virtualPwd.length - 1].getDirectoryHandle(args[1].replace(/['"]/g, ''), { create: true }); renderTree(); } 
+                    catch(e) { term.writeln(`\x1b[31mError:\x1b[0m ${e.message}`); }
+                }
+                else if (cmd === 'touch') {
+                    try { await virtualPwd[virtualPwd.length - 1].getFileHandle(args[1].replace(/['"]/g, ''), { create: true }); renderTree(); } 
+                    catch(e) { term.writeln(`\x1b[31mError:\x1b[0m ${e.message}`); }
+                }
+                else if (cmd === 'rm') {
+                    try { await virtualPwd[virtualPwd.length - 1].removeEntry(args[1].replace(/['"]/g, ''), { recursive: true }); renderTree(); } 
+                    catch(e) { term.writeln(`\x1b[31mError:\x1b[0m ${e.message}`); }
+                }
+                else if (cmd === 'cat') {
+                    try {
+                        const fileHandle = await virtualPwd[virtualPwd.length - 1].getFileHandle(args[1].replace(/['"]/g, ''));
+                        const file = await fileHandle.getFile();
+                        term.writeln(await file.text());
+                    } catch (e) { term.writeln(`\x1b[31mcat: No existe o es directorio\x1b[0m`); }
+                }
+                else { term.writeln(`\x1b[31mComando no encontrado:\x1b[0m ${cmd}`); }
+            } catch (err) { term.writeln(`\x1b[31mError:\x1b[0m ${err.message}`); }
+            term.write(getPrompt());
+        }
+
+        // --- 7. AGENTE AI BYOK (ESTILO CONTINUE CON MÚLTIPLES SESIONES) ---
+        let chatSessions = [];
+        let activeSessionId = null;
+
+        const ideTools = [
+            { type: "function", function: { name: "write_editor_code", description: "Reemplaza el código del editor", parameters: { type: "object", properties: { code: { type: "string" } }, required: ["code"] } } },
+            { type: "function", function: { name: "run_terminal_command", description: "Ejecuta un comando bash", parameters: { type: "object", properties: { command: { type: "string" } }, required: ["command"] } } }
+        ];
+
+        function loadChatSessions() {
+            const saved = localStorage.getItem('vanilla_ide_chats');
+            if (saved) {
+                chatSessions = JSON.parse(saved);
+                if (chatSessions.length > 0) activeSessionId = chatSessions[0].id;
+            }
+            if (!activeSessionId) createNewSession(false);
+            
+            renderSessionList();
+            renderActiveChat();
+        }
+
+        function saveChatSessions() {
+            localStorage.setItem('vanilla_ide_chats', JSON.stringify(chatSessions));
+        }
+
+        function createNewSession(render = true) {
+            const id = 'session-' + Date.now();
+            const newSession = {
+                id,
+                title: 'Nueva Conversación',
+                context: [{ role: "system", content: "Eres un asistente de IDE avanzado. Ayuda al desarrollador proporcionando código conciso, resolviendo errores o ejecutando comandos mediante tus herramientas." }]
+            };
+            chatSessions.unshift(newSession); // Add to top
+            activeSessionId = id;
+            
+            if (render) {
+                renderSessionList();
+                renderActiveChat();
+                saveChatSessions();
+                
+                // Hide history view if open
+                document.getElementById('ai-history-panel').classList.add('hidden');
+            }
+        }
+
+        function switchSession(id) {
+            activeSessionId = id;
+            renderSessionList();
+            renderActiveChat();
+            document.getElementById('ai-history-panel').classList.add('hidden');
+        }
+
+        function deleteSession(id, e) {
+            if (e) e.stopPropagation();
+            chatSessions = chatSessions.filter(s => s.id !== id);
+            if (chatSessions.length === 0) createNewSession(false);
+            else if (activeSessionId === id) activeSessionId = chatSessions[0].id;
+            
+            renderSessionList();
+            renderActiveChat();
+            saveChatSessions();
+        }
+
+        function getActiveSession() {
+            return chatSessions.find(s => s.id === activeSessionId);
+        }
+
+        // UI Toggles
+        function toggleAiConfig() {
+            const panel = document.getElementById('ai-config-panel');
+            panel.classList.toggle('hidden');
+            if (!panel.classList.contains('hidden')) document.getElementById('ai-history-panel').classList.add('hidden');
+        }
+
+        function toggleAiHistory() {
+            const panel = document.getElementById('ai-history-panel');
+            panel.classList.toggle('hidden');
+            if (!panel.classList.contains('hidden')) document.getElementById('ai-config-panel').classList.add('hidden');
+        }
+
+        function updateDefaultModels() {
+            const provider = document.getElementById('ai-provider').value;
+            const modelInput = document.getElementById('ai-model');
+            if(provider === 'groq') modelInput.value = 'llama3-8b-8192';
+            else if(provider === 'openai') modelInput.value = 'gpt-4o';
+            else if(provider === 'openrouter') modelInput.value = 'anthropic/claude-3.5-sonnet';
+            document.getElementById('model-status').classList.add('hidden');
+        }
+
+        async function detectModels() {
+            const provider = document.getElementById('ai-provider').value;
+            const apiKey = document.getElementById('ai-apikey').value.trim();
+            const status = document.getElementById('model-status');
+            const datalist = document.getElementById('model-list');
+            
+            if (!apiKey) {
+                showDialog("Atención", "Ingresa tu API Key para poder cargar los modelos.");
+                return;
+            }
+
+            status.classList.remove('hidden');
+            status.className = "text-[9px] text-vanilla-accent mt-1 block";
+            status.textContent = "Detectando modelos...";
+
+            let endpoint = provider === 'groq' ? 'https://api.groq.com/openai/v1/models' : 
+                           provider === 'openai' ? 'https://api.openai.com/v1/models' : 
+                           'https://openrouter.ai/api/v1/models';
+
+            try {
+                const response = await fetch(endpoint, { method: 'GET', headers: { 'Authorization': `Bearer ${apiKey}` } });
+                if (!response.ok) throw new Error('Error al conectar con la API');
+                const data = await response.json();
+                datalist.innerHTML = '';
+                if (data.data) {
+                    data.data.forEach(m => {
+                        const opt = document.createElement('option');
+                        opt.value = m.id;
+                        datalist.appendChild(opt);
+                    });
+                    status.className = "text-[9px] text-[#709c70] mt-1 block font-semibold";
+                    status.textContent = `✓ ${data.data.length} modelos cargados.`;
+                }
+            } catch (error) {
+                status.className = "text-[9px] text-red-500 mt-1 block";
+                status.textContent = "Error. Revisa tu API Key.";
+            }
+        }
+
+        // Renders the list of previous sessions
+        function renderSessionList() {
+            const listEl = document.getElementById('ai-history-list');
+            listEl.innerHTML = '';
+            
+            chatSessions.forEach(session => {
+                const isActive = session.id === activeSessionId;
+                const div = document.createElement('div');
+                div.className = `p-2 rounded cursor-pointer text-xs flex justify-between items-center group transition-colors border ${isActive ? 'bg-vanilla-bg border-vanilla-border shadow-sm' : 'bg-transparent border-transparent hover:bg-vanilla-hover'}`;
+                
+                div.innerHTML = `
+                    <div class="flex items-center gap-2 truncate" onclick="switchSession('${session.id}')">
+                        <i class="ph ph-chat-teardrop-text text-stone-400"></i>
+                        <span class="${isActive ? 'text-stone-700 font-medium' : 'text-stone-500'} truncate">${session.title}</span>
+                    </div>
+                    <i class="ph ph-trash text-stone-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1" onclick="deleteSession('${session.id}', event)"></i>
+                `;
+                listEl.appendChild(div);
+            });
+            
+            const session = getActiveSession();
+            if (session) {
+                document.getElementById('current-chat-title').textContent = session.title;
+            }
+        }
+
+        // Renders all messages for the active session
+        function renderActiveChat() {
+            const chatHistoryEl = document.getElementById('chat-messages');
+            chatHistoryEl.innerHTML = '';
+            
+            const session = getActiveSession();
+            if (!session) return;
+            
+            let hasVisibleMessages = false;
+
+            session.context.forEach((msg, index) => {
+                if (msg.role === 'system' || msg.role === 'tool') return; // Hide system and raw tool responses
+                if (msg.role === 'assistant' && !msg.content && msg.tool_calls) return; // Hide empty tool calls initially
+                
+                appendMessageToUI(msg.role, msg.content, `msg-${session.id}-${index}`);
+                hasVisibleMessages = true;
+            });
+
+            if (!hasVisibleMessages) {
+                chatHistoryEl.innerHTML = `
+                    <div class="flex flex-col items-center justify-center h-full text-stone-400 opacity-60 pointer-events-none gap-3 select-none">
+                        <i class="ph ph-robot text-5xl"></i>
+                        <p class="text-xs">Inicia una nueva conversación.</p>
+                    </div>
+                `;
+            } else {
+                scrollChatToBottom();
+            }
+        }
+
+        function appendMessageToUI(role, text, id = null) {
+            const chatHistoryEl = document.getElementById('chat-messages');
+            
+            // Remove empty placeholder if exists
+            const emptyState = chatHistoryEl.querySelector('.ph-robot');
+            if (emptyState) chatHistoryEl.innerHTML = '';
+
+            const div = document.createElement('div');
+            if (id) div.id = id;
+            div.className = 'flex flex-col gap-1 chat-message-enter';
+            
+            if (role === 'user') {
+                div.innerHTML = `
+                    <div class="flex items-center gap-2 mb-1 px-1">
+                        <div class="w-5 h-5 rounded-md bg-stone-300 flex items-center justify-center text-stone-600 text-[10px]"><i class="ph ph-user"></i></div>
+                        <span class="font-bold text-stone-700 text-xs">Tú</span>
+                    </div>
+                    <div class="text-stone-700 text-xs px-1 pl-8">
+                        ${text.split('\n').map(line => `<span>${line}</span><br>`).join('')}
+                    </div>
+                `;
+            } else {
+                div.innerHTML = `
+                    <div class="flex items-center gap-2 mb-1 px-1">
+                        <div class="w-5 h-5 rounded-md bg-vanilla-accent flex items-center justify-center text-white text-[10px]"><i class="ph ph-sparkle"></i></div>
+                        <span class="font-bold text-vanilla-accentHover text-xs">Asistente</span>
+                    </div>
+                    <div class="text-stone-700 text-xs leading-relaxed px-1 pl-8 markdown-body">
+                        ${formatMarkdown(text)}
+                    </div>
+                `;
+            }
+            
+            chatHistoryEl.appendChild(div);
+            scrollChatToBottom();
+        }
+
+        function scrollChatToBottom() {
+            const chatHistory = document.getElementById('chat-messages');
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        }
+
+        async function sendAIPrompt(isToolResponse = false) {
+            const provider = document.getElementById('ai-provider').value;
+            const apiKey = document.getElementById('ai-apikey').value.trim();
+            const model = document.getElementById('ai-model').value.trim();
+            const input = document.getElementById('ai-input');
+            const session = getActiveSession();
+            
+            if (!session) return;
+            
+            let promptText = "";
+            let aiMessageId = `msg-${session.id}-${Date.now()}`;
+
+            if (!isToolResponse) {
+                promptText = input.value.trim();
+                if (!promptText) return;
+                if (!apiKey) {
+                    toggleAiConfig();
+                    return showDialog("Requiere Configuración", "Ingresa tu API Key en la barra lateral para utilizar el agente.");
+                }
+
+                // Reset input height
+                input.value = '';
+                input.style.height = 'auto';
+
+                // Setup context
+                const activeData = activeFilePath ? openFilesMap.get(activeFilePath) : null;
+                let contextMsg = activeData && activeData.type === 'file' && editor.getValue().trim().length > 0 
+                    ? `\n\n--- Contexto: Archivo activo (${activeData.name}) ---\n\`\`\`\n${editor.getValue().substring(0, 3000)}\n\`\`\`\n` 
+                    : "";
+
+                // Update session title on first message
+                if (session.context.length <= 1) {
+                    session.title = promptText.substring(0, 30) + (promptText.length > 30 ? '...' : '');
+                    document.getElementById('current-chat-title').textContent = session.title;
+                    renderSessionList();
+                }
+
+                appendMessageToUI('user', promptText);
+                session.context.push({ role: "user", content: promptText + contextMsg });
+                
+                appendMessageToUI('assistant', '<i class="ph ph-circle-notch animate-spin"></i> Pensando...', aiMessageId);
+            } else {
+                // If it's a tool response, we append/update the existing assistant block
+                const aiDivs = document.getElementById('chat-messages').children;
+                if (aiDivs.length > 0) aiMessageId = aiDivs[aiDivs.length - 1].id;
+            }
+
+            let endpoint = provider === 'groq' ? 'https://api.groq.com/openai/v1/chat/completions' : 
+                           provider === 'openai' ? 'https://api.openai.com/v1/chat/completions' : 
+                           'https://openrouter.ai/api/v1/chat/completions';
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`, ...(provider === 'openrouter' && { 'HTTP-Referer': window.location.href, 'X-Title': 'Vanilla IDE' }) },
+                    body: JSON.stringify({ model: model, messages: session.context, tools: ideTools, tool_choice: "auto", stream: true })
+                });
+
+                if (!response.ok) throw new Error((await response.json()).error?.message || response.statusText);
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder("utf-8");
+                let fullResponse = "";
+                let toolCallsAcc = {};
+                
+                const msgBlock = document.getElementById(aiMessageId);
+                let contentArea = null;
+                if (msgBlock && !isToolResponse) {
+                    contentArea = msgBlock.querySelector('.markdown-body');
+                    contentArea.innerHTML = ""; 
+                } else if (msgBlock && isToolResponse) {
+                    contentArea = msgBlock.querySelector('.markdown-body');
+                }
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    const chunk = decoder.decode(value, { stream: true });
+                    const lines = chunk.split('\n').filter(line => line.trim() !== '');
+                    
+                    for (const line of lines) {
+                        if (line.includes('[DONE]')) continue;
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const delta = JSON.parse(line.slice(6)).choices[0].delta;
+                                if (delta.content) {
+                                    fullResponse += delta.content;
+                                    if(contentArea) { 
+                                        contentArea.innerHTML = formatMarkdown(fullResponse); 
+                                        scrollChatToBottom(); 
+                                    }
+                                }
+                                if (delta.tool_calls) {
+                                    for (let tc of delta.tool_calls) {
+                                        if (!toolCallsAcc[tc.index]) toolCallsAcc[tc.index] = { id: tc.id, type: "function", function: { name: tc.function.name, arguments: "" } };
+                                        if (tc.function.arguments) toolCallsAcc[tc.index].function.arguments += tc.function.arguments;
+                                    }
+                                }
+                            } catch(e) {}
+                        }
+                    }
+                }
+
+                let assistantMsg = { role: "assistant" };
+                if (fullResponse) assistantMsg.content = fullResponse;
+                const toolCallsArray = Object.values(toolCallsAcc);
+
+                if (toolCallsArray.length > 0) {
+                    assistantMsg.tool_calls = toolCallsArray;
+                    session.context.push(assistantMsg);
+                    
+                    if(contentArea) {
+                        const loadingTools = document.createElement('div');
+                        loadingTools.className = "text-vanilla-accentHover text-xs italic mt-2 py-1 px-2 bg-vanilla-sidebar rounded border border-vanilla-border flex items-center gap-2 w-fit";
+                        loadingTools.innerHTML = `<i class="ph ph-gear-six animate-spin"></i> Ejecutando acción...`;
+                        contentArea.appendChild(loadingTools);
+                        scrollChatToBottom();
+                    }
+                    
+                    for (let tc of toolCallsArray) {
+                        let resultStr = "";
+                        try {
+                            const args = JSON.parse(tc.function.arguments);
+                            if (tc.function.name === "write_editor_code") {
+                                if (!activeFilePath || openFilesMap.get(activeFilePath)?.type === 'extension') throw new Error("No hay un archivo válido abierto para editar.");
+                                editor.setValue(args.code, -1);
+                                resultStr = "Success: Código actualizado en el editor.";
+                            } else if (tc.function.name === "run_terminal_command") {
+                                term.writeln(`\r\n\x1b[38;5;137m[AI Executing]\x1b[0m: ${args.command}`);
+                                await executeCommand(args.command);
+                                resultStr = "Success: Comando ejecutado en la terminal.";
+                            }
+                        } catch(e) { resultStr = "Error: " + e.message; }
+                        session.context.push({ role: "tool", tool_call_id: tc.id, name: tc.function.name, content: resultStr });
+                    }
+                    saveChatSessions();
+                    await sendAIPrompt(true); // Recursive call for next step
+                } else {
+                    if (fullResponse) session.context.push(assistantMsg);
+                    saveChatSessions();
+                }
+
+            } catch (error) {
+                const el = document.getElementById(aiMessageId);
+                if(el) {
+                    const contentArea = el.querySelector('.markdown-body');
+                    if (contentArea) contentArea.innerHTML += `<br><span class="text-red-500 block mt-2 px-2 py-1 bg-red-50 rounded border border-red-200"><b>Error de API:</b> ${error.message}</span>`;
+                }
+            }
+        }
+
+        function formatMarkdown(text) {
+            if(!text) return "";
+            return text
+                .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+                .replace(/`([^`]+)`/g, '<code class="bg-vanilla-sidebar px-1 border border-vanilla-border rounded text-vanilla-accentHover font-mono text-[11px]">$1</code>')
+                .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
+                .replace(/\n/g, '<br>');
+        }
+
+        document.getElementById('ai-input').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) { 
+                e.preventDefault(); 
+                sendAIPrompt(); 
+            }
+        });
+
+        // --- INICIALIZACIÓN ---
+        setTimeout(() => {
+            loadSettings(); 
+            fetchExtensions(false); 
+            document.getElementById('indicator-explorer').classList.remove('hidden');
+            document.getElementById('btn-explorer').classList.replace('text-stone-400', 'text-stone-800');
+            fitAddon.fit();
+        }, 100);
+
+    </script>
+</body>
+</html>
